@@ -258,11 +258,30 @@ main() {
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    ./install/main.sh
+    print_in_purple "\n • Install Tools\n\n"
+
+    ask_for_confirmation "Do you want to Install Tools?"
+
+    if answer_is_yes; then
+
+        ./install/main.sh
+
+        print_result $? "Install Tools"
+
+    fi
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    print_in_purple "\n • Set Preferences\n\n"
 
-    ./preferences/main.sh
+    ask_for_confirmation "Do you want to Set Preferences?"
+
+    if answer_is_yes; then
+
+        ./preferences/main.sh        
+
+        print_result $? "Set Preferences"
+
+    fi
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
