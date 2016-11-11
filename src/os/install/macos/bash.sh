@@ -58,9 +58,10 @@ export PATH
 
     # Set latest version of `Bash` as the default
     # (macOS uses by default an older version of `Bash`).
+    # I use zsh for now
 
-    chsh -s "$newShellPath" &> /dev/null
-    print_result $? "Bash (use latest version)"
+    # chsh -s "$newShellPath" &> /dev/null
+    # print_result $? "Bash (use latest version)"
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
