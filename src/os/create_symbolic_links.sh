@@ -21,6 +21,8 @@ create_symlinks() {
         "shell/curlrc"
         "shell/inputrc"
 
+        "shell/zshrc"
+
         "git/gitattributes"
         "git/gitconfig"
         "git/gitignore"

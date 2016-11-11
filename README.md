@@ -1,4 +1,4 @@
-# [Cătălin](https://github.com/alrra)’s dotfiles [![Build Status](https://travis-ci.org/alrra/dotfiles.svg?branch=master)](https://travis-ci.org/alrra/dotfiles)
+# [kmassada](https://github.com/kmassada)’s dotfiles
 
 These are the base dotfiles that I start with when I set up a
 new environment. For more specific local needs I use the `.local`
@@ -15,8 +15,8 @@ understand [what it does](src/os/setup.sh). Seriously, **DON'T**!)
 
 | OS | Snippet |
 |:---|:---|
-| `macOS` | `bash -c "$(curl -LsS https://raw.github.com/alrra/dotfiles/master/src/os/setup.sh)"` |
-| `Ubuntu` | `bash -c "$(wget -qO - https://raw.github.com/alrra/dotfiles/master/src/os/setup.sh)"` |
+| `macOS` | `bash -c "$(curl -LsS https://raw.github.com/kmassada/dotfiles/master/src/os/setup.sh)"` |
+| `Ubuntu` | `bash -c "$(wget -qO - https://raw.github.com/kmassada/dotfiles/master/src/os/setup.sh)"` |
 
 That's it! :sparkles:
 
@@ -36,89 +36,6 @@ The setup process will:
   [`macOS`](src/os/preferences/macos) /
   [`Ubuntu`](src/os/preferences/ubuntu) preferences
 * Install [`vim` plugins](src/vim/vim/plugins)
-
-
-Setup process in action:
-
-<table>
-    <tbody>
-        <tr>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/19314446/cd89a592-90a2-11e6-948d-9d75247088ba.gif" alt="Setup process on Ubuntu" width="100%">
-            </td>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/19048636/e23e347a-89af-11e6-853c-98616b75b6ae.gif" alt="Setup process on Ubuntu" width="100%">
-            </td>
-        </tr>
-        <tr align="center">
-            <td>macOS</td>
-            <td>Ubuntu</td>
-        </td>
-    </tbody>
-</table>
-
-
-## Screenshots
-
-### Git
-
-Output for `git status`:
-
-<table>
-    <tbody>
-        <tr>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/10561038/f9f11a28-7525-11e5-8e1d-a304ad3557f9.png" alt="Output for Git status on macOS" width="100%">
-            </td>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/8397636/3708d218-1ddb-11e5-9d40-21c6871271b9.png" alt="Output for Git status on Ubuntu" width="100%">
-            </td>
-        </tr>
-        <tr align="center">
-            <td>macOS</td>
-            <td>Ubuntu</td>
-        </td>
-    </tbody>
-</table>
-
-Output for `git log`:
-
-<table>
-    <tbody>
-        <tr>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/10560966/e4ec08a6-7523-11e5-8941-4e12f6550a63.png" alt="Output for Git status on macOS" width="100%">
-            </td>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/10560955/4b5e1300-7523-11e5-9e96-95ea67de9474.png" alt="Output for Git log on Ubuntu" width="100%">
-            </td>
-        </tr>
-        <tr align="center">
-            <td>macOS</td>
-            <td>Ubuntu</td>
-        </td>
-    </tbody>
-</table>
-
-### tmux & vim
-
-<table>
-    <tbody>
-        <tr>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/10561007/498e1212-7525-11e5-8252-81503b3d6184.png" alt="tmux and vim on macOS" width="100%">
-            </td>
-            <td>
-                <img src="https://cloud.githubusercontent.com/assets/1223565/10560956/557ca2de-7523-11e5-9000-fc1e189a95f5.png" alt="tmux and vim on Ubuntu" width="100%">
-            </td>
-        </tr>
-        <tr align="center">
-            <td>macOS</td>
-            <td>Ubuntu</td>
-        </td>
-    </tbody>
-</table>
-
 
 ## Customize
 
@@ -176,7 +93,7 @@ such as the `git` user credentials, e.g.:
 [user]
 
     name = Cătălin Mariș
-    email = alrra@example.com
+    email = kmassada@example.com
     signingkey = XXXXXXXX
 ```
 
@@ -191,7 +108,7 @@ settings from `~/.vimrc`.
 
 If you decide to fork this project, don't forget to substitute my
 username with your own in the [`setup` snippets](#setup) and [in the
-`setup` script](https://github.com/alrra/dotfiles/blob/1503cf23ef23f6e31342b140bcd246625160b94f/src/os/setup.sh#L3).
+`setup` script](https://github.com/kmassada/dotfiles/blob/1503cf23ef23f6e31342b140bcd246625160b94f/src/os/setup.sh#L3).
 
 
 ## Update
