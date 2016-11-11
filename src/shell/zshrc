@@ -1,3 +1,5 @@
+#!/bin/zsh
+
 export VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python3
 
 # Path to your oh-my-zsh installation.
@@ -86,7 +88,7 @@ source $ZSH/oh-my-zsh.sh
 
 eval "$(chef shell-init zsh)"
 
-[[ -s "$HOME/.bash_profile" ]] && source "$HOME/.bash_profile"
+[[ -s "$HOME/.bash_profile" ]] && . "$HOME/.bash_profile"
 
 # code () { VSCODE_CWD="$PWD" open -n -b "com.microsoft.VSCode" --args $* ;}
 

@@ -1,0 +1,208 @@
+#!/bin/bash
+
+#=============================#
+#            PATHS            #
+#=============================#
+export PATH="$PATH:/usr/local/bin"
+export PATH="$PATH:/usr/bin"
+export PATH="$PATH:/bin"
+export PATH="$PATH:/usr/sbin"
+export PATH="$PATH:/sbin"
+export PATH="$PATH:/opt/X11/bin"
+export PATH="$PATH:/usr/local/sbin"
+export PATH="$PATH:/usr/local/bin"
+
+export PATH="$PATH:$HOME/bin"
+export PATH="$PATH:$HOME/Projects/dotfiles/os"
+export PATH="$PATH:$HOME/.rvm/bin"
+export PATH="$PATH:$HOME/.composer/vendor/bin"
+export PATH="$PATH:$HOME/.rvm/bin"
+export PATH="$PATH:$HOME/.nvm/versions/node/v5.1.0/bin"
+export PATH="$PATH:$HOME/.sdkman/candidates/groovy/current/bin"
+export PATH="$PATH:$HOME/Library/Android/sdk/tools"
+
+if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
+
+export JAVA_HOME=$(/usr/libexec/java_home)
+
+export EC2_HOME=/usr/local/ec2/ec2-api-tools-1.7.5.1
+export PATH="$PATH:$EC2_HOME/bin"
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && . "$HOME/.sdkman/bin/sdkman-init.sh"
+
+
+export NVM_DIR="$HOME/.nvm"
+[[ -s "$NVM_DIR/nvm.sh" ]] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+
+# export TERM=linux
+
+# added by travis gem
+[[ -f $HOME/.travis/travis.sh ]] && source $HOME/.travis/travis.sh
+
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
+export PATH="$PATH:$HOME/bin/android-sdk-macosx/tools"
+
+source ~/.iterm2_shell_integration.`basename $SHELL`
+
+export WORKON_HOME=$HOME/.virtualenvs
+export PROJECT_HOME=$HOME/Projects
+source /usr/local/bin/virtualenvwrapper.sh
+
+. ~/.bash.work
+. ~/.creds
+
+PATH="/usr/local/bin:$PATH"
+
+export PATH
+
+#=============================#
+#            FNCTS            #
+#=============================#
+
+#> Usage: quick-rebase <branch-name>
+#> Rebase branch in a hurry
+#
+function quick-rebase() {
+  git checkout master;
+  git pull;
+  if git checkout "$1"; then
+    git rebase master;
+  else
+    git checkout -b "$1"
+  fi
+}
+
+#> Usage: extract <archive>
+#> Extract any archives
+#
+function extract() {
+if [ -f "$1" ] ; then
+ case "$1" in
+   *.tar.bz2) tar xjf "$1" ;;
+   *.tar.gz) tar xzf "$1" ;;
+   *.tar.Z) tar xzf "$1" ;;
+   *.bz2) bunzip2 "$1" ;;
+   *.rar) unrar x "$1" ;;
+   *.gz) gunzip "$1" ;;
+   *.jar) unzip "$1" ;;
+   *.tar) tar xf "$1" ;;
+   *.tbz2) tar xjf "$1" ;;
+   *.tgz) tar xzf "$1" ;;
+   *.zip) unzip "$1" ;;
+   *.Z) uncompress "$1" ;;
+   *) echo "'$1' cannot be extracted." ;;
+ esac
+else
+   echo "'$1' is not a file."
+fi
+}
+
+#> Usage: ii
+#> Get current host related info.
+#
+function ii() {
+   echo -e "\nYou are logged on ${RED}$HOSTNAME"
+   echo -e "\n${RED}Additionnal information:${RESET} " ; uname -srm
+   echo -e "\n${RED}Users logged on:${RESET} "         ; w -h | cut -d " " -f1 | sort | uniq
+   echo -e "\n${RED}Current date:${RESET} "            ; today
+   echo -e "\n${RED}Machine stats:${RESET} "           ; uptime
+   echo -e "\n${RED}Memory stats:${RESET} "            ; free -mh || top -l 1 | head -n 10 | grep PhysMem
+   echo -e "\n${RED}Diskspace:${RESET} "               ; df -H -ln | awk {'printf ("%10s\t%s\n", $5, $1)'}
+   echo
+}
+
+#> Usage: `json '{"foo":42}'` or `echo '{"foo":42}' | json`
+#> Syntax-highlight JSON strings or files
+#
+function json() {
+    if [ -t 0 ]; then # argument
+        python -mjson.tool <<< "$*" | pygmentize -l javascript;
+    else # pipe
+        python -mjson.tool | pygmentize -l javascript;
+    fi;
+}
+
+#> Usage:  whois <domain>
+#> whois
+#
+function whois() {
+  local domain=$(echo "$1" | awk -F/ '{print $3}') # get domain from URL
+  if [ -z $domain ] ; then
+    domain=$1
+  fi
+  echo "Getting whois record for: $domain …"
+
+  # avoid recursion
+          # this is the best whois server
+                          # strip extra fluff
+  /usr/bin/whois -h whois.internic.net $domain | sed '/NOTICE:/q'
+}
+
+#> Usage:  spoofmac
+#> spoofmac
+#
+function spoofmac() {
+  local DEVICE=$1
+  if [ -z $DEVICE ] ; then
+    DEVICE=en0
+  fi
+  echo "Acquiring DEVICE.."
+
+  echo "Generating hash.."
+  NEWMAC=$(openssl rand -hex 6 | sed 's/\(..\)/\1:/g; s/.$//')
+
+  echo $NEWMAC
+
+  sudo ifconfig en0 ether $NEWMAC && sudo ifconfig $DEVICE down && sudo ifconfig $DEVICE up
+}
+
+
+#=============================#
+#            ALIAS            #
+#=============================#
+
+if [[ "$OS" == "macos" ]]; then
+  # clipborard
+  alias cc="pbcopy"
+
+  # flip
+  alias kickflip="osascript -e 'tell app \"System Events\" to log out'"
+  alias kickpush="osascript -e 'tell app \"System Events\" to  «event aevtrlgo»'"
+  alias kicklock="/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend"
+  alias netflip='networksetup -setairportpower airport off'
+
+  # misc
+  alias bluepush='pactl load-module module-bluetooth-discover'
+  alias bluekick='sudo initctl restart bluetooth'
+  alias flush="dscacheutil -flushcache && killall -HUP mDNSResponder"
+else
+  # clipborard
+  alias cc="xclip -selection clip"
+
+  # flip
+  alias kickpush='mate-session-save --force-logout'
+  alias kickflip='mate-session-save --shutdown-dialog'
+  alias kicklock="gnome-screensaver-command -l"
+  alias netflip='sudo initctl restart network-manager'
+fi
+
+# refresh
+alias f5='source ~/.zshrc'
+alias functions="cat ~/.bash_functions | GREP_COLOR='01;36' grep -A 1 '#> Usage'"
+alias aliases="grep -e ^[^#] ~/.bash_aliases | cut -d\  -f2- | GREP_COLOR='01;36' grep -e '\w*[\?\^\!\+\-]*='"
+
+# debug
+alias debugpid='strace -ff -e trace=write -e write=1,2 -p'
+alias debugbash='bash -x'
+
+# Network thins
+alias sniff="sudo ngrep -d 'en1' -t '^(GET|POST) ' 'tcp and port 80'"
+alias httpdump="sudo tcpdump -i en1 -n -s 0 -w - | grep -a -o -E \"Host\: .*|GET \/.*\""
+alias digmo="dig +nocmd any +multiline +noall +answer"
+alias connections='lsof -Pan -i tcp -i udp'
+alias ipext="dig +short myip.opendns.com @resolver1.opendns.com"
+alias ips="ifconfig | ggrep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'"
+
+alias today="date +'%a %b %e %R'; echo -e; cal; date +'Day:%j Week:%W'"
