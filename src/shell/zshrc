@@ -88,7 +88,16 @@ source $ZSH/oh-my-zsh.sh
 
 eval "$(chef shell-init zsh)"
 
-[[ -s "$HOME/.bash_profile" ]] && . "$HOME/.bash_profile"
+export OS="macos"
+declare -r CURRENT_DIRECTORY="$(pwd)"
+cd "$HOME/Projects/dotfiles/src/shell"
+. "../os/utils.sh"
+. "$HOME/.bash_aliases"
+. "$HOME/.bash_exports"
+. "$HOME/.bash_functions"
+. "$HOME/.bash.local"
+cd "$CURRENT_DIRECTORY"
+
 
 # code () { VSCODE_CWD="$PWD" open -n -b "com.microsoft.VSCode" --args $* ;}
 
