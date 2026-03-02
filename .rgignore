@@ -1,0 +1,41 @@
+# macOS clutter
+**/.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.antigravity
+
+# macOS Library & Caches
+/Library/
+**/Movies/TV/Media.localized/
+**/Pictures/Photos Library.photoslibrary/
+**/Music/Music Library.musiclibrary/
+#**/Library/Caches/
+#**/Library/Containers/
+#**/Library/Group Containers/
+#**/Library/Preferences/
+#**/Library/Application Support/
+#**/Library/HTTPStorages/
+#**/Library/Keychains/
+#**/Library/Finance/
+#**/Library/Assistant/LLMCache/
+
+.local/share/
+.cache/
+
+# VS Code Noise
+**/Library/Application Support/Code/User/History/
+**/Library/Application Support/Code/User/workspaceStorage/
+
+# Node / JavaScript
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+
+# General annoying stuff
+.cache/
+.config/

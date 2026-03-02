@@ -1,0 +1,192 @@
+# Function to display useful tips and commands
+tips() {
+  case "$1" in
+    byobu|tmux)
+      cat << EOF
+Vim:
+  :set paste  - To paste without auto-indent issues
+
+Byobu/Tmux:
+  Your custom prefix is: Ctrl+Space
+
+  To start another separate byobu/tmux session, run 'tmx2 new-session -d -s MyNewSessionName'. Then use '<prefix> s' to list sessions and switch, or '<prefix> (' and '<prefix> )' to cycle.
+  tmx2 new-session -d -s MyNewSessionName - Start a new detached session
+
+  Common Keybindings (use with <prefix>):
+    <prefix> c: Create a new window (opens next to the current one) (Custom)
+    <prefix> n: Move to the next window.
+    <prefix> p: Move to the previous window.
+    <prefix> <: Open pane splitting submenu
+    <prefix> >: Open window swapping submenu
+    <prefix> [0-9]: Switch directly to window number 0-9.
+    <prefix> d: Detach from the session.
+    <prefix> %: Split the current pane vertically.
+    <prefix> ": Split the current pane horizontally.
+    <prefix> ,: Rename the current window.
+    <prefix> [: Enter copy/scrollback mode.
+      - In copy mode: Use PageUp/PageDown, C-u/C-d, or arrow keys to navigate.
+    <prefix> ?: Show keybindings.
+    <prefix> z: Toggle zoom for the current pane.
+
+  Pane Navigation:
+    <prefix> + Left: Move to the pane on the left.
+    <prefix> + Right: Move to the pane on the right.
+    <prefix> + Up: Move to the pane above.
+    <prefix> + Down: Move to the pane below.
+    <prefix> q: Display pane numbers temporarily.
+    <prefix> {: Swap current pane with the previous pane.
+    <prefix> }: Swap current pane with the next pane.
+    <prefix> x: Close the current pane.
+
+
+  Pane Resizing:
+    <prefix> + Alt + Left: Make the current pane wider (if vertical split) or taller (if horizontal split).
+    <prefix> + Alt + Right: Make the current pane narrower (if vertical split) or shorter (if horizontal split).
+    <prefix> + Alt + Up: Make the current pane taller.
+    <prefix> + Alt + Down: Make the current pane shorter.
+
+  Window Management:
+    <prefix> .: Move the current window to the next available index.
+    exit: Close the current pane or window.
+    <prefix> w: List all windows in the current session.
+    <prefix> q: List all panes in the current window.
+    (Windows are renumbered on close - Custom)
+EOF
+      ;;
+    gemini)
+      cat << EOF
+Gemini CLI Tips:
+  /help: Show help message.
+  /bug: Report a bug.
+  !: Prefix with ! to run a shell command (e.g., !ls -l).
+  Ctrl + J: Add a newline to your input.
+
+  Input Box Navigation (Mac Keyboard in Byobu):
+    Ctrl + E: Go to the end of the current line.
+    Cmd + Left Arrow: Go to the beginning of the current line.
+    Cmd + Right Arrow: Go to the end of the current line.
+    Cmd + Up Arrow: Go to the beginning of the entire input text.
+    Cmd + Down Arrow: Go to the end of the entire input text.
+  (Note: Byobu uses Ctrl + A as its prefix, so standard Ctrl + A for beginning of line is not available.)
+EOF
+      ;;
+    vi)
+      cat << 'EOF'
+Here is your "Survival Kit" for the Vim path.
+
+Crucial Rule: In the shell, you are in "Insert Mode" by default. You must hit Esc to use any of these.
+
+--- Navigation (Moving Around) ---
+
+Key         Action
+---         ------
+h / l       Left / Right
+j / k       Down / Up (History)
+w           Jump forward by start of word
+b           Jump backward by start of word
+e           Jump to end of word
+0 (zero)    Go to start of line
+$           Go to end of line
+f + char    Find next occurance of char
+
+Pro Tip: w and b are the most important keys here. Stop holding arrow keys; just tap w a few times to fly across the line.
+
+--- Editing (Changing Text) ---
+
+Key         Action
+---         ------
+i           Insert before cursor
+a           Append after cursor
+A           Append at end of line
+x           Delete character under cursor
+dw          Delete word
+cw          Change word
+D           Delete to end of line
+u           Undo
+
+--- The "Power Move" (Text Objects) ---
+
+This is the specific reason people stick with Vim. You don't edit by characters; you edit by "objects."
+
+Try these combinations (verbs + nouns):
+
+* ciw -> Change Inside Word.
+  Scenario: Your cursor is in the middle of a long word like SuperCalifra|gilistic. You want to replace it.
+  Action: Type ciw. The whole word vanishes, and you are typing the new word.
+
+* dt" -> Delete Till " (quote).
+  Scenario: git commit -m "wrong message here"
+  Action: Cursor is on w. Type dt". It deletes everything up to the next quote.
+
+--- Multi-line & Yank/Put/Delete ---
+
+Key         Action
+---         ------
+yy          Yank (copy) the current line
+p           Put (paste) the yanked content AFTER the cursor
+P           Put (paste) the yanked content BEFORE the cursor
+dd          Delete (cut) the current line
+O           Open a new line ABOVE the current line and enter Insert mode
+o           Open a new line BELOW the current line and enter Insert mode
+V           Enter Visual Line mode (select whole lines)
+            While in Visual Line mode:
+              j/k     to extend selection up/down
+              d       to Delete (cut) selected lines
+              y       to Yank (copy) selected lines
+EOF
+      ;;
+    shell|terminal)
+      cat << 'EOF'
+Terminal / Shell Tips:
+
+  --- History Expansion ---
+  !!        : Run the previous command again.
+  sudo !!   : Run the previous command again, but with sudo.
+  !$        : The last argument of the previous command (e.g. `mkdir mydir` then `cd !$`).
+  !prefix   : Run the most recent command starting with 'prefix' (e.g. `!git`).
+
+  --- Vim Mode & Editing ---
+  Esc       : Enter Command Mode (where you can use h, j, k, l, w, b, dd, etc.).
+  i, a, A   : Return to Insert Mode.
+  v         : (In Command Mode) Open the current command in your $EDITOR (nvim).
+  Ctrl + X, Ctrl + E : Open the current command in your $EDITOR (works in Insert Mode too).
+  Ctrl + R  : Reverse search through history (still the fastest way to find old commands).
+
+  --- Control ---
+  Ctrl + L  : Clear the screen.
+  Ctrl + C  : Cancel/Interrupt the current command.
+  Ctrl + Z  : Suspend the current process (resume with `fg`).
+EOF
+      ;;
+    *)
+      echo "Usage: tips [byobu|gemini|vi|shell]"
+      ;;
+  esac
+}
+
+alias c='clear'
+
+# Kill lingering gemini_api_prox processes
+clean_gemini_prox() {
+    echo "Searching for lingering gemini_api_prox processes..."
+    PIDS=$(pgrep -f "gemini_api_prox")
+
+    if [ -z "$PIDS" ]; then
+        echo "No gemini_api_prox processes found."
+        return 0
+    fi
+
+    echo "Found gemini_api_prox PIDs: $PIDS"
+    echo "Terminating processes..."
+    echo "$PIDS" | xargs kill -9
+
+    # Verify
+    sleep 1
+    PIDS_AFTER=$(pgrep -f "gemini_api_prox")
+    if [ -z "$PIDS_AFTER" ]; then
+        echo "Successfully terminated all found gemini_api_prox processes."
+    else
+        echo "The following gemini_api_prox PIDs still exist: $PIDS_AFTER"
+        echo "You may need to investigate further."
+    fi
+}
