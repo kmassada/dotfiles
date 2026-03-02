@@ -107,11 +107,22 @@ This setup uses GNU `stow` to manage symlinks automatically.
 git clone <your-repo-url> ~/src/dotfiles
 cd ~/src/dotfiles
 
-# 2. Backup existing configurations to a temporary folder
+# 2. Restore your applications from the Brewfile
+brew bundle install --file=~/src/dotfiles/Brewfile
+
+# 3. Backup existing configurations to a temporary folder
 mkdir ~/tmp_dotfiles_backup
 mv ~/.zshrc ~/.zsh_aliases ~/.tmux.conf ~/.p10k.zsh ~/.rgignore ~/tmp_dotfiles_backup/ 2>/dev/null
 
-# 3. Use Stow to create the symlinks
-# This command symlinks the contents of the current folder (.) into your home directory (-t ~)
-stow -t ~ .
+# 4. Use Stow to create the symlinks
+# The --adopt flag tells stow to overwrite the repository files with any local changes 
+# (useful if you already have custom configurations in your home directory).
+stow --adopt -t ~ .
+```
+
+### 🧹 Cleaning Up Extraneous Apps
+If you want to force your machine to *exactly* match the contents of your `Brewfile` (meaning it will uninstall anything you installed manually that isn't documented in the file), you can run:
+
+```bash
+brew bundle cleanup --file=~/src/dotfiles/Brewfile --force
 ```
