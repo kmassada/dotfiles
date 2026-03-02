@@ -1,62 +1,117 @@
-# 🚀 My Ultimate Zsh Terminal Setup
+# 📁 Dotfiles
 
-This repository contains my personal terminal configuration. It is heavily optimized for speed, visual minimalism, and noise reduction using a custom `fzf` + `ripgrep` engine.
+This repository contains my personal terminal and shell configuration. It is set up for speed and minimalism, utilizing `fzf`, `ripgrep`, and Vim keybindings.
 
-## 🛠 The Philosophy
+## 🛠️ Prerequisites
 
-* **Visuals:** Minimalist. No heavy background blocks. Using Powerlevel10k's "Pure" style  via iTerm2.
-* **Search Engine:** Replaced the Mac's slow default `find` command with `ripgrep` to power all fuzzy finding.
-* **Noise Reduction:** Strict ignore rules to banish macOS Library caches, VS Code history, and massive dependency folders from search results.
-
-## 📦 Prerequisites (The Stack)
-
-To recreate this setup on a new machine, install these via Homebrew:
+The following tools are required and can be installed via Homebrew:
 
 ```bash
-brew install fzf ripgrep eza neovim
-
+brew install fzf ripgrep eza neovim tmux gh stow
 ```
 
-* `fzf`: The interactive fuzzy finder menu.
-* `ripgrep` (`rg`): The blisteringly fast search engine that powers `fzf`.
-* `eza`: A modern replacement for `ls` that provides colors and icons for the `fzf-tab` preview window.
-* `neovim`: Aliased to `vi` in the `.zshrc` to provide out-of-the-box syntax highlighting without heavy configuration.
+* `fzf`: Command-line fuzzy finder.
+* `ripgrep` (`rg`): Fast search tool, used as the default search engine for `fzf`.
+* `eza`: A modern replacement for `ls` providing colors and icons.
+* `neovim`: Text editor, set as the default `$EDITOR` and aliased to `vim`.
+* `tmux`: Terminal multiplexer.
+* `gh`: GitHub CLI.
+* `stow`: Symlink farm manager, used to install these dotfiles.
 
-## 🧩 The Plugin Ecosystem
+## 🏗️ Architecture & Configuration
 
-Plugins are installed via Homebrew and MUST be loaded in a strict order in the `.zshrc`:
+### 1. 🔍 Search and Navigation (`fzf` + `ripgrep`)
+The default Zsh completion is replaced with `fzf-tab` to provide an interactive menu. 
+* `ripgrep` is configured as the default command for `fzf`.
+* A custom `_fzf_compgen_path` function ensures `** + Tab` triggers `ripgrep` instead of the default `find` command.
+* `eza` is used to provide colored previews for directories within `fzf`.
 
-1. **`fzf-tab`**: Replaces the standard Zsh autocomplete menu with an interactive, searchable fzf pane. (Requires `compinit` to run *before* it).
-2. **`zsh-autosuggestions`**: Provides "ghost text" based on command history. Accept with the Right Arrow key.
-3. **`zsh-syntax-highlighting`**: Colorizes commands as they are typed. (MUST be the absolute last plugin loaded, or it will break).
+### 2. 🚫 Ignore Rules (`.rgignore`)
+The `~/.rgignore` file defines strict rules to keep search results clean by blocking:
+* macOS specific files (`.DS_Store`, `Library/`, etc.)
+* Node and Python caches (`node_modules/`, `__pycache__/`)
+* VS Code workspace history
 
-## 🧠 The "Gotchas" & Custom Architecture
+### 3. 🔌 Zsh Plugins
+Plugins are installed via Homebrew and loaded in the `.zshrc`:
+1. **`fzf-tab`**: Interactive completion menu (loaded after `compinit`).
+2. **`zsh-autosuggestions`**: Suggests commands based on history.
+3. **`zsh-syntax-highlighting`**: Colorizes commands.
 
-### 1. The Nuclear `fzf` + `ripgrep` Integration
+### 4. ⌨️ Keybindings & Editor
+* **Vi Mode:** The shell is configured to use Vi keybindings (`bindkey -v`).
+* **Command Editing:** Press `Ctrl + X`, `Ctrl + E` (or `v` in normal mode) to edit the current command line in Neovim.
+* **Cursor Shape:** The cursor automatically changes between a block (command mode) and a beam (insert mode).
 
-By default, pressing `** + Tab` in Zsh uses the system's slow `find` command and completely ignores `.rgignore` rules. To fix this "silent fallback," the `.zshrc` contains a custom override (`_fzf_compgen_path`) that physically hardwires the `**` trigger to use `ripgrep`.
-
-### 2. Banish the Junk (`.rgignore`)
-
-The `~/.rgignore` file is the secret weapon of this setup. `ripgrep` reads this file on every search. It is configured to explicitly block:
-
-* `Library/` (Instantly kills thousands of VS Code workspace history files and Apple caches from clogging the search menu).
-* `.antigravity/` extensions.
-* `.DS_Store` and other Apple clutter.
-
-### 3. The Preview Window Fix
-
-Apple's native `ls` command is based on BSD and crashes if you pass it Linux flags like `--color=always`. To get a colored preview pane when using `cd ~/folder + Tab`, the `zstyle` configuration is set up to use either:
-
-* Native: `ls -1hpG`
-* Modern: `eza -1 --color=always` (Preferred)
-
-### 4. The History 
-
-Zsh history is loaded directly into RAM. The `.zshrc` caps `HISTSIZE` at 50,000. Setting this to something way larger like 5,000,000.
+### 5. 🪟 Tmux (`.tmux.conf`)
+* **Prefix:** Changed to `Ctrl + Space`.
+* **Window/Pane Index:** Starts at 1 instead of 0.
+* **Mouse:** Enabled.
+* **Splitting:** `"` for vertical, `%` for horizontal, both opening in the current path.
 
 ## 🎨 Theming
 
-1. **Prompt:** Run `p10k configure`. Select "Pure" style, 2 lines, Sparse spacing, Original colors.
-2. **Terminal:** iTerm2 > Profiles > Colors > Import Catppuccin Mocha `.itermcolors`.
-3. Because P10k is set to "Original" colors, it absorbs the Catppuccin palette perfectly without fighting it.
+The setup uses the **Apprentice** color palette (https://romainl.github.io/Apprentice/).
+
+1. **Terminal Colors:** iTerm2/Terminal emulator should be configured to use the Apprentice color scheme.
+2. **Prompt (Powerlevel10k):** Uses the "Pure" style. If you ever need to re-run the configuration wizard (`p10k configure`), here are the settings to match this setup:
+   *   **Prompt Style:** `Pure`
+   *   **Prompt Color:** `Original`
+   *   **Non-permanent Content:** `Right side`
+   *   **Current Time:** `No`
+   *   **Prompt Height:** `2 lines`
+   *   **Prompt Spacing:** `Sparse`
+   *   **Enable Transient Prompt:** `False`
+   *   **Instant Prompt:** `Verbose`
+3. **Syntax Highlighting & Tmux:** Colors in `.zshrc` (for `zsh-syntax-highlighting`) and `.tmux.conf` (status bar) have been manually adjusted to match the Apprentice palette.
+
+## 📦 Installed Apps
+
+Here are the core "power user" applications that drive this setup:
+
+*   **`bat`**: A highly improved `cat` clone with syntax highlighting and Git integration.
+*   **`eza`**: A modern, colorful, and icon-rich replacement for the standard `ls` command.
+*   **`fzf`**: A blazing fast command-line fuzzy finder used for searching history, files, and more.
+*   **`k9s`**: A terminal-based UI to seamlessly monitor and interact with Kubernetes clusters.
+*   **`neovim`**: A highly extensible Vim-based text editor (aliased to `vim` and used as the default `$EDITOR`).
+*   **`powerlevel10k`**: The engine behind the fast, informative, and stylish Zsh prompt.
+*   **`ripgrep`**: An extremely fast search tool that completely replaces `grep` and powers the backend of `fzf`.
+*   **`stow`**: A GNU symlink farm manager used to instantly install and manage these dotfiles.
+*   **`tmux`**: A powerful terminal multiplexer for managing multiple panes and sessions (configured with a custom `Ctrl+Space` prefix).
+
+*(Note: Other utility tools like `gh`, `jq`, `kubectx`, and `podman` are also frequently used alongside this stack).*
+
+### 🔄 Keeping Homebrew Synced
+
+To track changes to your Homebrew installations and commit them to version control, you can generate a **Brewfile** which captures every package, cask, and tap in your current environment:
+
+```bash
+# Generate/Update the Brewfile inside your dotfiles directory
+brew bundle dump --file=~/src/dotfiles/Brewfile --force
+```
+
+#### 🌿 Viewing Your "Leaves" (Alternative)
+If you just want a quick, human-readable list of only the core packages you've explicitly installed (ignoring all their background dependencies), run:
+
+```bash
+brew leaves --installed-on-request
+```
+This is a great way to see exactly what you've added to your system without the noise of the underlying "dependency tree."
+
+## 🚀 Installation
+
+This setup uses GNU `stow` to manage symlinks automatically.
+
+```bash
+# 1. Clone the repository into a dedicated folder
+git clone <your-repo-url> ~/src/dotfiles
+cd ~/src/dotfiles
+
+# 2. Backup existing configurations to a temporary folder
+mkdir ~/tmp_dotfiles_backup
+mv ~/.zshrc ~/.zsh_aliases ~/.tmux.conf ~/.p10k.zsh ~/.rgignore ~/tmp_dotfiles_backup/ 2>/dev/null
+
+# 3. Use Stow to create the symlinks
+# This command symlinks the contents of the current folder (.) into your home directory (-t ~)
+stow -t ~ .
+```
