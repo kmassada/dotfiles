@@ -1,4 +1,3 @@
-tap "derailed/k9s"
 tap "mistertea/et"
 brew "asciinema"
 brew "bat"
