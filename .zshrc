@@ -70,9 +70,22 @@ function zle-line-init {
 }
 zle -N zle-line-init
 
+# Set tmux window name to current directory when idle
+precmd() {
+  if [[ -n "$TMUX" ]]; then
+    # ${PWD##*/} gets just the current directory name
+    tmux rename-window "${PWD##*/}" 
+  fi
+}
+
 # Reset cursor to beam before executing a command
+# And set tmux window name to the command
 preexec() {
   echo -ne '\e[5 q'
+  if [[ -n "$TMUX" ]]; then
+    # $1 contains the exact command typed, e.g., "vim ~/.zshrc"
+    tmux rename-window "$1"
+  fi
 }
 
 # Edit command line in $EDITOR
