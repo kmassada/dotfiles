@@ -41,7 +41,6 @@ elif [[ "$OS_NAME" == "Linux" ]]; then
       zsh-autosuggestions
       zsh-syntax-highlighting
       zsh-completions
-      zsh-autocomplete
       fzf-tab
   )
 
@@ -183,4 +182,3 @@ if [ -d "$HOME/src/dotfiles/local" ]; then
     fi
   done
 fi
-
