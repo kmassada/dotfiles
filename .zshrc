@@ -107,11 +107,6 @@ if [[ -d "$ZSH_COMPLETIONS_PATH" ]]; then
 fi
 autoload -Uz compinit &&  compinit
 
-# Less aggressive autocomplete strategy
-unsetopt AUTO_MENU
-setopt MENU_COMPLETE
-unsetopt AUTO_COMPLETE
-
 # Tool Autocompletions
 
 # kubectl completion
