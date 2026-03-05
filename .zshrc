@@ -174,3 +174,13 @@ export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
 # Podman
 export DOCKER_HOST='unix:///var/folders/g9/y9_50v4s37z_bzntrfv7psgm0000gn/T/podman/podman-machine-default-api.sock'
 export PODMAN_COMPOSE_PROVIDER_NO_MESSAGE=1
+
+# Source all .zsh files in local/
+if [ -d "$HOME/src/dotfiles/local" ]; then
+  for file in $HOME/src/dotfiles/local/*.zsh; do
+    if [ -r "$file" ]; then
+      source "$file"
+    fi
+  done
+fi
+
