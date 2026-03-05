@@ -165,6 +165,9 @@ EOF
 }
 
 alias c='clear'
+if [[ "$TERM" == "xterm-kitty" ]]; then
+  alias ssh="kitten ssh"
+fi
 
 # Kill lingering gemini_api_prox processes
 clean_gemini_prox() {

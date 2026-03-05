@@ -1,2 +1,5 @@
 local/
 local/
+.config/gh
+.config/gbackup
+.config/configstore
