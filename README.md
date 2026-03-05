@@ -2,21 +2,97 @@
 
 This repository contains my personal terminal and shell configuration. It is set up for speed and minimalism, utilizing `fzf`, `ripgrep`, and Vim keybindings.
 
-## 🛠️ Prerequisites
+## 🛠️ Core Tools
 
-The following tools are required and can be installed via Homebrew:
+Here are the core applications that drive this setup:
 
+*   **`bat`**: A highly improved `cat` clone with syntax highlighting and Git integration.
+*   **`eza`**: A modern, colorful, and icon-rich replacement for the standard `ls` command.
+*   **`fzf`**: A blazing fast command-line fuzzy finder used for searching history, files, and more.
+*   **`gh`**: GitHub CLI.
+*   **`git-delta`**: A syntax-highlighting pager for git, diff, and grep output.
+*   **`jless`**: A command-line JSON viewer.
+*   **`jq`**: Lightweight and flexible command-line JSON processor.
+*   **`k9s`**: A terminal-based UI to seamlessly monitor and interact with Kubernetes clusters.
+*   **`kubectl`**: Kubernetes command-line tool.
+*   **`kubectx`**: Tool to switch between contexts (clusters) on kubectl faster.
+*   **`lazygit`**: A simple terminal UI for git commands.
+*   **`neovim`**: A highly extensible Vim-based text editor (aliased to `vim` and used as the default `$EDITOR`).
+*   **`podman`**: Daemonless container engine.
+*   **`powerlevel10k`**: The engine behind the fast, informative, and stylish Zsh prompt.
+*   **`ripgrep`**: An extremely fast search tool that completely replaces `grep` and powers the backend of `fzf`.
+*   **`stow`**: A GNU symlink farm manager used to instantly install and manage these dotfiles.
+*   **`tmux`**: A powerful terminal multiplexer for managing multiple panes and sessions (configured with a custom `Ctrl+Space` prefix).
+*   **`wget`**: Utility for non-interactive download of files from the web.
+*   **`yq`**: A command-line YAML, JSON, and XML processor.
+*   **`zsh`**: The Z shell.
+
+### Zsh Plugins
+*   **`fzf-tab`**: Interactive completion menu for Zsh.
+*   **`zsh-autocomplete`**: Real-time typeahead autocompletion for Zsh.
+*   **`zsh-autosuggestions`**: Suggests commands based on history.
+*   **`zsh-completions`**: Additional completion definitions for Zsh.
+*   **`zsh-syntax-highlighting`**: Colorizes commands in the shell.
+
+## 🛠️ Supported Operating Systems
+
+This configuration supports both **macOS** and **Linux** (Debian/Ubuntu based).
+The `.zshrc` file contains conditional logic to handle OS-specific paths and package management. 
+
+## 🚀 Installation
+
+This setup uses GNU `stow` to manage symlinks automatically.
+
+**Clone the repository:**
 ```bash
-brew install fzf ripgrep eza neovim tmux gh stow
+git clone <your-repo-url> ~/src/dotfiles
+cd ~/src/dotfiles
 ```
 
-* `fzf`: Command-line fuzzy finder.
-* `ripgrep` (`rg`): Fast search tool, used as the default search engine for `fzf`.
-* `eza`: A modern replacement for `ls` providing colors and icons.
-* `neovim`: Text editor, set as the default `$EDITOR` and aliased to `vim`.
-* `tmux`: Terminal multiplexer.
-* `gh`: GitHub CLI.
-* `stow`: Symlink farm manager, used to install these dotfiles.
+### macOS Setup
+
+**Install tools using the Brewfile:**
+```bash
+brew bundle install --file=~/src/dotfiles/Brewfile
+```
+
+**Backup existing configurations (Optional):**
+```bash
+mkdir -p ~/tmp_dotfiles_backup
+mv ~/.zshrc ~/.zsh_aliases ~/.tmux.conf ~/.p10k.zsh ~/.rgignore ~/tmp_dotfiles_backup/ 2>/dev/null
+```
+
+**Use Stow to create the symlinks:**
+```bash
+stow --adopt -t ~ .
+```
+
+### Linux Setup (Debian/Ubuntu)
+
+**Run the Linux installation script for general tools:**
+```bash
+chmod +x install_linux.sh
+./install_linux.sh
+```
+
+**Run the Zsh plugin installation script:**
+```bash
+chmod +x install_zsh_plugins.sh
+./install_zsh_plugins.sh
+```
+
+**Backup existing configurations (Optional):**
+```bash
+mkdir -p ~/tmp_dotfiles_backup
+mv ~/.zshrc ~/.zsh_aliases ~/.tmux.conf ~/.p10k.zsh ~/.rgignore ~/tmp_dotfiles_backup/ 2>/dev/null
+```
+
+**Use Stow to create the symlinks:**
+```bash
+stow --adopt -t ~ .
+```
+
+**Note:** After installing on Linux, you may need to open a new terminal session or source your `.zshrc` for all changes to take effect. You might also be prompted to configure Powerlevel10k by running `p10k configure`.
 
 ## 🏗️ Architecture & Configuration
 

@@ -5,7 +5,52 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# OS Detection
+OS_NAME=$(uname -s)
+
+if [[ "$OS_NAME" == "Darwin" ]]; then
+  # macOS specific setup
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+  BREW_PREFIX=$(brew --prefix)
+  GCLOUD_COMPLETION_PATH="$BREW_PREFIX/share/google-cloud-sdk/completion.zsh.inc"
+  GCLOUD_PATH_PATH="$BREW_PREFIX/share/google-cloud-sdk/path.zsh.inc"
+  FZF_TAB_PATH="$BREW_PREFIX/opt/fzf-tab/share/fzf-tab/fzf-tab.zsh"
+  AUTOSUGGESTIONS_PATH="$BREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+  SYNTAX_HIGHLIGHTING_PATH="$BREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+  POWERLEVEL10K_PATH="$BREW_PREFIX/share/powerlevel10k/powerlevel10k.zsh-theme"
+  ZSH_COMPLETIONS_PATH="$BREW_PREFIX/share/zsh-completions"
+
+  # Source plugins directly for macOS
+  if [[ -f "$FZF_TAB_PATH" ]]; then source "$FZF_TAB_PATH"; fi
+  if [[ -f "$AUTOSUGGESTIONS_PATH" ]]; then source "$AUTOSUGGESTIONS_PATH"; fi
+  if [[ -f "$SYNTAX_HIGHLIGHTING_PATH" ]]; then source "$SYNTAX_HIGHLIGHTING_PATH"; fi
+  if [[ -f "$POWERLEVEL10K_PATH" ]]; then source "$POWERLEVEL10K_PATH"; fi
+elif [[ "$OS_NAME" == "Linux" ]]; then
+  # Linux specific setup
+  GCLOUD_COMPLETION_PATH="/usr/share/google-cloud-sdk/completion.zsh.inc" # Common path, adjust if needed
+  GCLOUD_PATH_PATH="/usr/share/google-cloud-sdk/path.zsh.inc" # Common path, adjust if needed
+  ZSH_COMPLETIONS_PATH="/usr/share/zsh/site-functions"
+
+  # Oh My Zsh
+  export ZSH="$HOME/.oh-my-zsh"
+
+  ZSH_THEME="powerlevel10k/powerlevel10k"
+
+  plugins=(
+      git
+      zsh-autosuggestions
+      zsh-syntax-highlighting
+      zsh-completions
+      zsh-autocomplete
+      fzf-tab
+  )
+
+  if [ -d "$ZSH" ]; then
+    source $ZSH/oh-my-zsh.sh
+  else
+    echo "Oh My Zsh not found, skipping OMZ loading."
+  fi
+fi
 
 # Keybindings (MUST BE BEFORE FZF AND PLUGINS)
 bindkey -v
@@ -57,11 +102,10 @@ zstyle ':fzf-tab:*' fzf-flags --preview-window=right:50%:wrap
 zstyle ':fzf-tab:complete:*:*' fzf-preview 'if [ -d $realpath ]; then eza -1 --color=always $realpath; elif [ -f $realpath ]; then cat $realpath; fi'
 
 # Setup FPATH and run compinit
-if type brew &>/dev/null; then
-  FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
-
-  autoload -Uz compinit &&  compinit
+if [[ -d "$ZSH_COMPLETIONS_PATH" ]]; then
+  FPATH=$ZSH_COMPLETIONS_PATH:$FPATH
 fi
+autoload -Uz compinit &&  compinit
 
 # Tool Autocompletions
 
@@ -71,16 +115,12 @@ if type kubectl &>/dev/null; then
 fi
 
 # gcloud
-source $(brew --prefix)/share/google-cloud-sdk/completion.zsh.inc
-source $(brew --prefix)/share/google-cloud-sdk/path.zsh.inc
-
-# Plugins
-source $(brew --prefix)/opt/fzf-tab/share/fzf-tab/fzf-tab.zsh
-source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
-# zsh theme
-source $(brew --prefix)/share/powerlevel10k/powerlevel10k.zsh-theme
+if [[ -f "$GCLOUD_COMPLETION_PATH" ]]; then
+  source "$GCLOUD_COMPLETION_PATH"
+fi
+if [[ -f "$GCLOUD_PATH_PATH" ]]; then
+  source "$GCLOUD_PATH_PATH"
+fi
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
