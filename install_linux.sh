@@ -101,7 +101,14 @@ cd ~
 rm -rf $TEMP_DIR
 
 # Nerd Fonts
-echo "Manual installation needed for Nerd Fonts. Download from: https://www.nerdfonts.com/font-downloads"
+echo "Installing Hack Nerd Font..."
+if [ ! -d ~/nerd-fonts ]; then
+    git clone --depth 1 https://github.com/ryanoasis/nerd-fonts.git ~/nerd-fonts
+fi
+cd ~/nerd-fonts
+./install.sh Hack
+fc-cache -f -v
+cd ~
 
 # gcloud-cli
 # Instructions: https://cloud.google.com/sdk/docs/install
