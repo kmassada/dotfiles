@@ -81,7 +81,12 @@
 
   # OS Icon customization
   typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=$white
-  typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='' # Apple logo
+  # Show Apple logo on macOS, otherwise let P10k pick the default (Linux/Distro icon)
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION=''
+  else
+    unset POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION
+  fi
 
   # Add an empty line before each prompt except the first. This doesn't emulate the bug
   # in Pure that makes prompt drift down whenever you use the Alt-C binding from fzf or similar.
