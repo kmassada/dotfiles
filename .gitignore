@@ -1,5 +1,5 @@
 local/
-local/
 .config/gh
 .config/gbackup
 .config/configstore
+.config/gcloud/
