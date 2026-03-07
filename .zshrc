@@ -5,6 +5,9 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# Disable URL escaping when pasting
+DISABLE_MAGIC_FUNCTIONS=true
+
 # OS Detection
 OS_NAME=$(uname -s)
 
