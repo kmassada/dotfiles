@@ -81,9 +81,11 @@
 
   # OS Icon customization
   typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=$white
-  # Show Apple logo on macOS, otherwise let P10k pick the default (Linux/Distro icon)
+  # Show Apple logo on macOS, Penguin on Linux, otherwise default
   if [[ "$OSTYPE" == "darwin"* ]]; then
     typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION=''
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='' # Penguin (Tux)
   else
     unset POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION
   fi
