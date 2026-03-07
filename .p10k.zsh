@@ -49,7 +49,7 @@
   # Left prompt segments.
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
-    # context                 # user@host
+    os_icon                   # OS icon (Apple logo)
     dir                       # current directory
     vcs                       # git status
     # command_execution_time  # previous command duration
@@ -75,7 +75,13 @@
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_{LEFT,RIGHT}_WHITESPACE=  # no surrounding whitespace
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_SUBSEGMENT_SEPARATOR=' '  # separate segments with a space
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_SEGMENT_SEPARATOR=        # no end-of-line symbol
-  typeset -g POWERLEVEL9K_VISUAL_IDENTIFIER_EXPANSION=           # no segment icons
+  
+  # Allow icons/visual identifiers
+  typeset -g POWERLEVEL9K_VISUAL_IDENTIFIER_EXPANSION='${P9K_VISUAL_IDENTIFIER}'
+
+  # OS Icon customization
+  typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=$white
+  typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='' # Apple logo
 
   # Add an empty line before each prompt except the first. This doesn't emulate the bug
   # in Pure that makes prompt drift down whenever you use the Alt-C binding from fzf or similar.
