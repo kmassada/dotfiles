@@ -116,10 +116,10 @@
   # Blue current directory.
   typeset -g POWERLEVEL9K_DIR_FOREGROUND=$blue
 
-  # Context format when root: user@host. The first part white, the rest grey.
-  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$white}%n%f%F{$grey}@%m%f"
+  # Context format when root: user@host.
+  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$grey}%n@%m%f"
   # Context format when not root: user@host.
-  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$white}%n%f%F{$grey}@%m%f"
+  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$grey}%n@%m%f"
   # Show context always.
   typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION='%n@%m'
   typeset -g POWERLEVEL9K_CONTEXT_SUDO_CONTENT_EXPANSION=
