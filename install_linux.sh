@@ -32,6 +32,11 @@ sudo apt-get install -y \
 
 # --- Packages requiring manual or different installation steps ---
 
+# Create local directory for Zsh settings
+mkdir -p ~/local
+touch ~/local/init.zsh
+
+
 # Create bin directory if it doesn't exist
 mkdir -p ~/bin
 
@@ -54,10 +59,32 @@ mv $(tar -tf git-delta.tar.gz | head -1 | cut -d/ -f1)/delta ~/bin/delta
 # jless
 # Instructions: https://github.com/PaulJuliusMartinez/jless?tab=readme-ov-file#installation
 echo "Installing jless..."
-LATEST_JLESS_URL=$(curl -s https://api.github.com/repos/PaulJuliusMartinez/jless/releases/latest | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-musl.tar.gz$")) | .browser_download_url')
-wget $LATEST_JLESS_URL -O jless.tar.gz
-tar -xzf jless.tar.gz
-mv jless ~/bin/jless
+LATEST_JLESS_TAG=$(curl -s https://api.github.com/repos/PaulJuliusMartinez/jless/releases/latest | jq -r .tag_name)
+if [ -z "$LATEST_JLESS_TAG" ] || [ "$LATEST_JLESS_TAG" == "null" ]; then
+    echo "Failed to fetch latest jless tag. Manual installation may be required."
+else
+    JLESS_ASSET_NAME="jless-${LATEST_JLESS_TAG}-x86_64-unknown-linux-gnu.zip"
+    LATEST_JLESS_URL=$(curl -s https://api.github.com/repos/PaulJuliusMartinez/jless/releases/tags/${LATEST_JLESS_TAG} | jq -r --arg ASSET_NAME "$JLESS_ASSET_NAME" '.assets[] | select(.name == $ASSET_NAME) | .browser_download_url')
+
+    if [ -z "$LATEST_JLESS_URL" ] || [ "$LATEST_JLESS_URL" == "null" ]; then
+        echo "Failed to find download URL for ${JLESS_ASSET_NAME}."
+    else
+        echo "Downloading jless from $LATEST_JLESS_URL"
+        if wget "$LATEST_JLESS_URL" -O jless.zip; then
+            if command_exists unzip; then
+                unzip jless.zip -d jless_unzipped
+                mv jless_unzipped/jless ~/bin/jless
+                rm -rf jless_unzipped jless.zip
+                echo "jless installed successfully."
+            else
+                echo "unzip command not found. Please install unzip."
+                rm jless.zip
+            fi
+        else
+            echo "Failed to download jless."
+        fi
+    fi
+fi
 
 # k9s
 # Instructions: https://k9scli.io/topics/install/
@@ -69,10 +96,23 @@ mv k9s ~/bin/k9s
 # lazygit
 # Instructions: https://github.com/jesseduffield/lazygit?tab=readme-ov-file#installation
 echo "Installing lazygit..."
-LATEST_LAZYGIT_URL=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | jq -r '.assets[] | select(.name | test("Linux_x86_64.tar.gz$")) | .browser_download_url')
-wget $LATEST_LAZYGIT_URL -O lazygit.tar.gz
-tar -xzf lazygit.tar.gz
-mv lazygit ~/bin/lazygit
+LATEST_LAZYGIT_TAG=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | jq -r .tag_name)
+if [ -z "$LATEST_LAZYGIT_TAG" ] || [ "$LATEST_LAZYGIT_TAG" == "null" ]; then
+    echo "Failed to fetch latest lazygit tag. Manual installation may be required."
+else
+    # Extract version number from tag (e.g., v0.41.0 -> 0.41.0)
+    LAZYGIT_VERSION=$(echo $LATEST_LAZYGIT_TAG | sed 's/v//')
+    LATEST_LAZYGIT_URL="https://github.com/jesseduffield/lazygit/releases/download/${LATEST_LAZYGIT_TAG}/lazygit_${LAZYGIT_VERSION}_linux_x86_64.tar.gz"
+    echo "Downloading lazygit from $LATEST_LAZYGIT_URL"
+    if wget "$LATEST_LAZYGIT_URL" -O lazygit.tar.gz; then
+        tar -xzf lazygit.tar.gz
+        mv lazygit ~/bin/lazygit
+        rm lazygit.tar.gz
+        echo "lazygit installed successfully."
+    else
+        echo "Failed to download lazygit."
+    fi
+fi
 
 # lima (Linux VMs on macOS - Not applicable for Linux hosts)
 echo "Skipping lima - Not applicable for Linux hosts."

@@ -49,6 +49,12 @@ git clone <your-repo-url> ~/src/dotfiles
 cd ~/src/dotfiles
 ```
 
+**Important:** Some Zsh settings expect a `~/local/init.zsh` file to exist. You can create this for any local, machine-specific overrides that you don't want to commit to the repository. Create it before stowing:
+```bash
+mkdir -p ~/local
+touch ~/local/init.zsh
+```
+
 ### macOS Setup
 
 **Install tools using the Brewfile:**
@@ -93,6 +99,16 @@ stow --adopt -t ~ .
 ```
 
 **Note:** After installing on Linux, you may need to open a new terminal session or source your `.zshrc` for all changes to take effect. You might also be prompted to configure Powerlevel10k by running `p10k configure`.
+
+### 📜 Download Helper Scripts
+
+Some additional helper scripts can be downloaded into the `./scripts/` directory by running the following command:
+
+```bash
+chmod +x download_scripts.sh
+./download_scripts.sh
+```
+This will download the scripts specified in `download_scripts.sh` and make them executable.
 
 ## 🏗️ Architecture & Configuration
 

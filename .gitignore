@@ -3,3 +3,4 @@ local/
 .config/gbackup
 .config/configstore
 .config/gcloud/
+scripts/
