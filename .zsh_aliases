@@ -70,6 +70,30 @@ Gemini CLI Tips:
   (Note: Tmux uses Ctrl + Space as its prefix, so standard Ctrl + A for beginning of line IS available.)
 EOF
       ;;
+    vscode)
+      cat << EOF
+VSCode Tips (Mac):
+
+  --- Multi-Cursor & Selection ---
+  Alt + Shift + I          : Add cursors to ends of selected lines
+  Alt + Cmd + Shift + Up   : Column selection / Add cursor above
+  Alt + Cmd + Shift + Down : Column selection / Add cursor below
+  Cmd + D                  : Select next occurrence of current word
+  Cmd + Shift + L          : Select all occurrences of current selection
+
+  --- Line Manipulation ---
+  Alt + Up / Down          : Move line up / down
+  Shift + Alt + Up / Down  : Copy line up / down
+  Cmd + Shift + K          : Delete line
+  Cmd + Enter              : Insert line below
+  Cmd + Shift + Enter      : Insert line above
+
+  --- Essential Editing ---
+  Cmd + /                  : Toggle line comment
+  Cmd + ] / [              : Indent / Outdent line
+  Shift + Alt + F          : Format document
+EOF
+      ;;
     vi)
       cat << 'EOF'
 Here is your "Survival Kit" for the Vim path.
@@ -159,7 +183,7 @@ Terminal / Shell Tips:
 EOF
       ;;
     *)
-      echo "Usage: tips [tmux|gemini|vi|shell]"
+      echo "Usage: tips [tmux|gemini|vi|shell|vscode]"
       ;;
   esac
 }
