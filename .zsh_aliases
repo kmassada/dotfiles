@@ -1,15 +1,15 @@
 # Function to display useful tips and commands
 tips() {
   case "$1" in
-    byobu|tmux)
+    tmux)
       cat << EOF
 Vim:
   :set paste  - To paste without auto-indent issues
 
-Byobu/Tmux:
+Tmux:
   Your custom prefix is: Ctrl+Space
 
-  To start another separate byobu/tmux session, run 'tmx2 new-session -d -s MyNewSessionName'. Then use '<prefix> s' to list sessions and switch, or '<prefix> (' and '<prefix> )' to cycle.
+  To start another separate tmux session, run 'tmx2 new-session -d -s MyNewSessionName'. Then use '<prefix> s' to list sessions and switch, or '<prefix> (' and '<prefix> )' to cycle.
   tmx2 new-session -d -s MyNewSessionName - Start a new detached session
 
   Common Keybindings (use with <prefix>):
@@ -61,13 +61,13 @@ Gemini CLI Tips:
   !: Prefix with ! to run a shell command (e.g., !ls -l).
   Ctrl + J: Add a newline to your input.
 
-  Input Box Navigation (Mac Keyboard in Byobu):
+  Input Box Navigation (Mac Keyboard in Tmux):
     Ctrl + E: Go to the end of the current line.
     Cmd + Left Arrow: Go to the beginning of the current line.
     Cmd + Right Arrow: Go to the end of the current line.
     Cmd + Up Arrow: Go to the beginning of the entire input text.
     Cmd + Down Arrow: Go to the end of the entire input text.
-  (Note: Byobu uses Ctrl + A as its prefix, so standard Ctrl + A for beginning of line is not available.)
+  (Note: Tmux uses Ctrl + Space as its prefix, so standard Ctrl + A for beginning of line IS available.)
 EOF
       ;;
     vi)
@@ -159,7 +159,7 @@ Terminal / Shell Tips:
 EOF
       ;;
     *)
-      echo "Usage: tips [byobu|gemini|vi|shell]"
+      echo "Usage: tips [tmux|gemini|vi|shell]"
       ;;
   esac
 }
