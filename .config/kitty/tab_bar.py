@@ -116,9 +116,9 @@ def draw_right_status(screen: Screen, draw_data: DrawData) -> None:
     elif gap < 0:
         return # Tab bar is too crowded, skip right status
         
-    # Match the right status colors to the active tab's colors
+    # Use color5 (purple) for the hostname chip to distinguish it from the active tab
     fg = as_rgb(color_as_int(draw_data.active_fg))
-    bg = as_rgb(color_as_int(draw_data.active_bg))
+    bg = as_rgb(color_as_int(opts.color5))
     
     # Draw left-pointing powerline separator
     screen.cursor.fg = bg
