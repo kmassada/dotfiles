@@ -115,7 +115,11 @@ b           Jump backward by start of word
 e           Jump to end of word
 0 (zero)    Go to start of line
 $           Go to end of line
+( / )       Jump to start of previous / next sentence
+{ / }       Jump to start of previous / next paragraph
+gg / G      Go to start / end of file (or history)
 f + char    Find next occurance of char
+F + char    Find PREVIOUS occurance of char
 
 Pro Tip: w and b are the most important keys here. Stop holding arrow keys; just tap w a few times to fly across the line.
 
@@ -130,6 +134,10 @@ x           Delete character under cursor
 dw          Delete word
 cw          Change word
 D           Delete to end of line
+dt + char   Delete TILL char
+df + char   Delete FIND (including) char
+dT + char   Delete backward TILL char
+dF + char   Delete backward FIND (including) char
 u           Undo
 
 --- The "Power Move" (Text Objects) ---
@@ -142,9 +150,17 @@ Try these combinations (verbs + nouns):
   Scenario: Your cursor is in the middle of a long word like SuperCalifra|gilistic. You want to replace it.
   Action: Type ciw. The whole word vanishes, and you are typing the new word.
 
+* ci( or ci[ or ci{ -> Change Inside (parentheses), [brackets], or {braces}.
+  Scenario: function_call(arg1, arg2, arg3)
+  Action: With cursor anywhere inside the (), type ci(. The arguments vanish, leaving you in insert mode inside empty ().
+
 * dt" -> Delete Till " (quote).
   Scenario: git commit -m "wrong message here"
   Action: Cursor is on w. Type dt". It deletes everything up to the next quote.
+
+* dF/ -> Delete backward Find / (slash).
+  Scenario: /Users/makz/src/dotfiles/
+  Action: With cursor at the end, type dF/. It deletes the last directory including the trailing slash.
 
 --- Multi-line & Yank/Put/Delete ---
 
