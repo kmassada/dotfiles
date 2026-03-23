@@ -25,6 +25,10 @@ Tmux:
     <prefix> ,: Rename the current window.
     <prefix> [: Enter copy/scrollback mode.
       - In copy mode: Use PageUp/PageDown, C-u/C-d, or arrow keys to navigate.
+      - Space: Start selecting text.
+      - Ctrl + v: Toggle rectangular selection.
+      - Shift + v: Toggle line selection.
+      - y: Copy selected text.
     <prefix> ?: Show keybindings.
     <prefix> z: Toggle zoom for the current pane.
 
