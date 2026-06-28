@@ -45,14 +45,14 @@ This setup uses GNU `stow` to manage symlinks automatically.
 
 **Clone the repository:**
 ```bash
-git clone <your-repo-url> ~/src/dotfiles
+git clone https://github.com/kmassada/dotfiles.git ~/src/dotfiles
 cd ~/src/dotfiles
 ```
 
-**Important:** Some Zsh settings expect a `~/local/init.zsh` file to exist. You can create this for any local, machine-specific overrides that you don't want to commit to the repository. Create it before stowing:
+**Important:** Some Zsh settings expect a `~/.local/init.zsh` file to exist. You can create this for any local, machine-specific overrides that you don't want to commit to the repository. Create it before stowing:
 ```bash
-mkdir -p ~/local
-touch ~/local/init.zsh
+mkdir -p ~/.local
+touch ~/.local/init.zsh
 ```
 
 ### macOS Setup
@@ -217,4 +217,33 @@ If you want to force your machine to *exactly* match the contents of your `Brewf
 
 ```bash
 brew bundle cleanup --file=~/src/dotfiles/Brewfile --force
+
+## ⚡ Profiling & Debugging Startup
+
+If your shell startup feels slow, you can profile it using the following methods.
+
+### 1. Function Profiling (`zprof`)
+Zsh has a built-in profiler that measures the execution time of shell functions.
+
+1. Add the following line to the **very top** of your `~/.zshrc`:
+   ```zsh
+   zmodload zsh/zprof
+   ```
+2. Add the following line to the **very bottom** of your `~/.zshrc`:
+   ```zsh
+   zprof
+   ```
+3. Open a new terminal. It will print a table showing which functions took the most CPU time.
+
+*Note: `zprof` only measures shell functions. It does not measure top-level commands or external binary executions.*
+
+### 2. Deep Profiling (`xtrace`)
+To profile everything, including top-level commands, sourcing files, and external binaries (which can cause hangs), you can run Zsh in trace mode with nanosecond timestamps.
+
+1. Run the following command to generate a trace log:
+   ```bash
+   PS4='+%D{%s.%N} %N:%i> ' zsh -x -i -c exit 2>/tmp/zsh_trace.txt
+   ```
+2. Analyze `/tmp/zsh_trace.txt` by looking for large gaps between the timestamps on consecutive lines. The line before the gap is the command that caused the delay.
+
 ```
