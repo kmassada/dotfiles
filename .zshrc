@@ -193,7 +193,7 @@ export PODMAN_COMPOSE_PROVIDER_NO_MESSAGE=1
 
 # Source all .zsh files in local/ (private overrides)
 if [ -d "$HOME/.local" ]; then
-  for file in $HOME/.local/*.zsh; do
+  for file in $HOME/.local/*.zsh(N); do
     if [ -r "$file" ]; then
       source "$file"
     fi
