@@ -150,9 +150,23 @@ cd ~/nerd-fonts
 fc-cache -f -v
 cd ~
 
-# gcloud-cli
-# Instructions: https://cloud.google.com/sdk/docs/install
-echo "Manual installation needed for gcloud-cli. Please see: https://cloud.google.com/sdk/docs/install"
+# gcloud-cli (Method B - Manual Tarball)
+echo "Installing gcloud-cli (manual)..."
+if [ ! -d "$HOME/google-cloud-sdk" ]; then
+    DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz"
+    echo "Downloading from $DOWNLOAD_URL..."
+    if wget "$DOWNLOAD_URL" -O google-cloud-cli.tar.gz; then
+        tar -xzf google-cloud-cli.tar.gz -C "$HOME"
+        rm google-cloud-cli.tar.gz
+        # Run install script silently without modifying shell profiles
+        "$HOME/google-cloud-sdk/install.sh" --quiet --path-update false --command-completion false
+        echo "gcloud-cli installed successfully to ~/google-cloud-sdk"
+    else
+        echo "Failed to download gcloud-cli."
+    fi
+else
+    echo "gcloud-cli is already installed at ~/google-cloud-sdk"
+fi
 
 # VSCode Extensions - Install via VSCode UI or code command
 echo "Install VSCode extensions: github.copilot-chat, ms-azuretools.vscode-containers using the VSCode UI or the 'code --install-extension' command."
