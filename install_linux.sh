@@ -182,21 +182,33 @@ if [ -d "$HOME/.oh-my-zsh" ]; then
 fi
 
 # gcloud-cli (Method B - Manual Tarball)
-echo "Installing gcloud-cli (manual)..."
-if [ ! -d "$HOME/google-cloud-sdk" ]; then
+echo "Installing/configuring gcloud-cli..."
+# 1. If it exists in the old location, move it to ~/bin
+if [ -d "$HOME/google-cloud-sdk" ] && [ ! -d "$HOME/bin/google-cloud-sdk" ]; then
+    echo "Moving gcloud-cli from ~/google-cloud-sdk to ~/bin/google-cloud-sdk..."
+    mv "$HOME/google-cloud-sdk" "$HOME/bin/"
+fi
+
+# 2. If it doesn't exist in the new location, download and install it
+if [ ! -d "$HOME/bin/google-cloud-sdk" ]; then
     DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz"
     echo "Downloading from $DOWNLOAD_URL..."
     if wget "$DOWNLOAD_URL" -O google-cloud-cli.tar.gz; then
-        tar -xzf google-cloud-cli.tar.gz -C "$HOME"
+        mkdir -p "$HOME/bin"
+        tar -xzf google-cloud-cli.tar.gz -C "$HOME/bin"
         rm google-cloud-cli.tar.gz
         # Run install script silently without modifying shell profiles
-        "$HOME/google-cloud-sdk/install.sh" --quiet --path-update false --command-completion false
-        echo "gcloud-cli installed successfully to ~/google-cloud-sdk"
+        "$HOME/bin/google-cloud-sdk/install.sh" --quiet --path-update false --command-completion false
+        echo "gcloud-cli installed successfully to ~/bin/google-cloud-sdk"
     else
         echo "Failed to download gcloud-cli."
     fi
-else
-    echo "gcloud-cli is already installed at ~/google-cloud-sdk"
+fi
+
+# 3. Ensure gke-gcloud-auth-plugin is installed in the SDK
+if [ -d "$HOME/bin/google-cloud-sdk" ]; then
+    echo "Ensuring gke-gcloud-auth-plugin is installed..."
+    "$HOME/bin/google-cloud-sdk/bin/gcloud" components install gke-gcloud-auth-plugin --quiet
 fi
 
 # VSCode Extensions - Install via VSCode UI or code command
