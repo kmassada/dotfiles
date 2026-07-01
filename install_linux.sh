@@ -171,6 +171,16 @@ else
     echo "Nerd Fonts already installed."
 fi
 
+# Powerlevel10k Theme
+if [ -d "$HOME/.oh-my-zsh" ]; then
+    if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" ]; then
+        echo "Installing Powerlevel10k theme..."
+        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+    else
+        echo "Powerlevel10k theme is already installed."
+    fi
+fi
+
 # gcloud-cli (Method B - Manual Tarball)
 echo "Installing gcloud-cli (manual)..."
 if [ ! -d "$HOME/google-cloud-sdk" ]; then
