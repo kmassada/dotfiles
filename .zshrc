@@ -124,10 +124,18 @@ autoload -Uz compinit &&  compinit
 
 # Tool Autocompletions
 
-# kubectl completion
+# kubectl completion (cached to prevent GKE auth triggers on startup)
 if type kubectl &>/dev/null; then
-  source <(kubectl completion zsh)
+  COMPLETION_CACHE="$HOME/.local/kubectl_completion.zsh"
+  if [ ! -f "$COMPLETION_CACHE" ]; then
+    mkdir -p "$(dirname "$COMPLETION_CACHE")"
+    kubectl completion zsh > "$COMPLETION_CACHE" 2>/dev/null
+  fi
+  if [ -f "$COMPLETION_CACHE" ]; then
+    source "$COMPLETION_CACHE"
+  fi
 fi
+
 
 # gcloud
 if [[ -f "$GCLOUD_COMPLETION_PATH" ]]; then
