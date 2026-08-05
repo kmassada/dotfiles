@@ -2,6 +2,7 @@
 
 # Installer script for Linux (Debian/Ubuntu based)
 
+
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -50,26 +51,54 @@ echo "Manual installation needed for gemini-cli."
 
 # git-delta
 # Instructions: https://dandavison.github.io/delta/installation.html
-if ! command_exists delta; then
-    echo "Installing git-delta..."
-    LATEST_DELTA_URL=$(curl -s https://api.github.com/repos/dandavison/delta/releases/latest | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-musl.tar.gz$")) | .browser_download_url')
-    wget $LATEST_DELTA_URL -O git-delta.tar.gz
-    tar -xzf git-delta.tar.gz
-    mv $(tar -tf git-delta.tar.gz | head -1 | cut -d/ -f1)/delta ~/bin/delta
+echo "Checking git-delta..."
+LATEST_DELTA_JSON=$(curl -s https://api.github.com/repos/dandavison/delta/releases/latest)
+LATEST_DELTA_TAG=$(echo "$LATEST_DELTA_JSON" | jq -r .tag_name)
+LATEST_DELTA_TAG_CMP=${LATEST_DELTA_TAG#v}
+
+if [ -f "$HOME/bin/delta" ]; then
+    LOCAL_DELTA_TAG=$("$HOME/bin/delta" --version | awk '{print $2}')
+    LOCAL_DELTA_TAG=${LOCAL_DELTA_TAG#v}
 else
-    echo "git-delta is already installed."
+    LOCAL_DELTA_TAG="none"
+fi
+
+if [ "$LOCAL_DELTA_TAG" != "$LATEST_DELTA_TAG_CMP" ]; then
+    echo "Updating git-delta from $LOCAL_DELTA_TAG to $LATEST_DELTA_TAG_CMP..."
+    LATEST_DELTA_URL=$(echo "$LATEST_DELTA_JSON" | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-musl.tar.gz$")) | .browser_download_url')
+    if wget "$LATEST_DELTA_URL" -O git-delta.tar.gz; then
+        tar -xzf git-delta.tar.gz
+        mv "$(tar -tf git-delta.tar.gz | head -1 | cut -d/ -f1)/delta" ~/bin/delta
+        echo "git-delta updated successfully."
+    else
+        echo "Failed to download git-delta."
+    fi
+else
+    echo "git-delta is up to date ($LOCAL_DELTA_TAG)."
 fi
 
 # jless
 # Instructions: https://github.com/PaulJuliusMartinez/jless?tab=readme-ov-file#installation
-if ! command_exists jless; then
-    echo "Installing jless..."
-    LATEST_JLESS_TAG=$(curl -s https://api.github.com/repos/PaulJuliusMartinez/jless/releases/latest | jq -r .tag_name)
-    if [ -z "$LATEST_JLESS_TAG" ] || [ "$LATEST_JLESS_TAG" == "null" ]; then
-        echo "Failed to fetch latest jless tag. Manual installation may be required."
+echo "Checking jless..."
+LATEST_JLESS_JSON=$(curl -s https://api.github.com/repos/PaulJuliusMartinez/jless/releases/latest)
+LATEST_JLESS_TAG=$(echo "$LATEST_JLESS_JSON" | jq -r .tag_name)
+
+if [ -z "$LATEST_JLESS_TAG" ] || [ "$LATEST_JLESS_TAG" == "null" ]; then
+    echo "Failed to fetch latest jless tag. Manual installation may be required."
+else
+    LATEST_JLESS_TAG_CMP=${LATEST_JLESS_TAG#v}
+
+    if [ -f "$HOME/bin/jless" ]; then
+        LOCAL_JLESS_TAG=$("$HOME/bin/jless" --version | awk '{print $2}')
+        LOCAL_JLESS_TAG=${LOCAL_JLESS_TAG#v}
     else
+        LOCAL_JLESS_TAG="none"
+    fi
+
+    if [ "$LOCAL_JLESS_TAG" != "$LATEST_JLESS_TAG_CMP" ]; then
+        echo "Updating jless from $LOCAL_JLESS_TAG to $LATEST_JLESS_TAG_CMP..."
         JLESS_ASSET_NAME="jless-${LATEST_JLESS_TAG}-x86_64-unknown-linux-gnu.zip"
-        LATEST_JLESS_URL=$(curl -s https://api.github.com/repos/PaulJuliusMartinez/jless/releases/tags/${LATEST_JLESS_TAG} | jq -r --arg ASSET_NAME "$JLESS_ASSET_NAME" '.assets[] | select(.name == $ASSET_NAME) | .browser_download_url')
+        LATEST_JLESS_URL=$(echo "$LATEST_JLESS_JSON" | jq -r --arg ASSET_NAME "$JLESS_ASSET_NAME" '.assets[] | select(.name == $ASSET_NAME) | .browser_download_url')
 
         if [ -z "$LATEST_JLESS_URL" ] || [ "$LATEST_JLESS_URL" == "null" ]; then
             echo "Failed to find download URL for ${JLESS_ASSET_NAME}."
@@ -79,41 +108,67 @@ if ! command_exists jless; then
                 if command_exists unzip; then
                     unzip jless.zip -d jless_unzipped
                     mv jless_unzipped/jless ~/bin/jless
-                    rm -rf jless_unzipped jless.zip
-                    echo "jless installed successfully."
+                    echo "jless updated successfully."
                 else
                     echo "unzip command not found. Please install unzip."
-                    rm jless.zip
                 fi
             else
                 echo "Failed to download jless."
             fi
         fi
+    else
+        echo "jless is up to date ($LOCAL_JLESS_TAG)."
     fi
-else
-    echo "jless is already installed."
 fi
 
 # k9s
 # Instructions: https://k9scli.io/topics/install/
-if ! command_exists k9s; then
-    echo "Installing k9s..."
-    wget https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz -O k9s.tar.gz
-    tar -xzf k9s.tar.gz
-    mv k9s ~/bin/k9s
-    rm k9s.tar.gz
+echo "Checking k9s..."
+LATEST_K9S_JSON=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest)
+LATEST_K9S_TAG=$(echo "$LATEST_K9S_JSON" | jq -r .tag_name)
+LATEST_K9S_TAG_CMP=${LATEST_K9S_TAG#v}
+
+if [ -f "$HOME/bin/k9s" ]; then
+    LOCAL_K9S_TAG=$("$HOME/bin/k9s" version | awk '/Version:/ {print $2}')
+    LOCAL_K9S_TAG=${LOCAL_K9S_TAG#v}
 else
-    echo "k9s is already installed."
+    LOCAL_K9S_TAG="none"
+fi
+
+if [ "$LOCAL_K9S_TAG" != "$LATEST_K9S_TAG_CMP" ]; then
+    echo "Updating k9s from $LOCAL_K9S_TAG to $LATEST_K9S_TAG_CMP..."
+    LATEST_K9S_URL="https://github.com/derailed/k9s/releases/download/${LATEST_K9S_TAG}/k9s_Linux_amd64.tar.gz"
+    if wget "$LATEST_K9S_URL" -O k9s.tar.gz; then
+        tar -xzf k9s.tar.gz
+        mv k9s ~/bin/k9s
+        echo "k9s updated successfully."
+    else
+        echo "Failed to download k9s."
+    fi
+else
+    echo "k9s is up to date ($LOCAL_K9S_TAG)."
 fi
 
 # lazygit
 # Instructions: https://github.com/jesseduffield/lazygit?tab=readme-ov-file#installation
-if ! command_exists lazygit; then
-    echo "Installing lazygit..."
-    LATEST_LAZYGIT_TAG=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | jq -r .tag_name)
-    if [ -z "$LATEST_LAZYGIT_TAG" ] || [ "$LATEST_LAZYGIT_TAG" == "null" ]; then
-        echo "Failed to fetch latest lazygit tag. Manual installation may be required."
+echo "Checking lazygit..."
+LATEST_LAZYGIT_JSON=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest)
+LATEST_LAZYGIT_TAG=$(echo "$LATEST_LAZYGIT_JSON" | jq -r .tag_name)
+
+if [ -z "$LATEST_LAZYGIT_TAG" ] || [ "$LATEST_LAZYGIT_TAG" == "null" ]; then
+    echo "Failed to fetch latest lazygit tag. Manual installation may be required."
+else
+    LATEST_LAZYGIT_TAG_CMP=${LATEST_LAZYGIT_TAG#v}
+
+    if [ -f "$HOME/bin/lazygit" ]; then
+        LOCAL_LAZYGIT_TAG=$("$HOME/bin/lazygit" --version | awk -F', ' '{for(i=1;i<=NF;i++) if($i ~ /^version=/) print $i}' | cut -d= -f2)
+        LOCAL_LAZYGIT_TAG=${LOCAL_LAZYGIT_TAG#v}
     else
+        LOCAL_LAZYGIT_TAG="none"
+    fi
+
+    if [ "$LOCAL_LAZYGIT_TAG" != "$LATEST_LAZYGIT_TAG_CMP" ]; then
+        echo "Updating lazygit from $LOCAL_LAZYGIT_TAG to $LATEST_LAZYGIT_TAG_CMP..."
         # Extract version number from tag (e.g., v0.41.0 -> 0.41.0)
         LAZYGIT_VERSION=$(echo $LATEST_LAZYGIT_TAG | sed 's/v//')
         LATEST_LAZYGIT_URL="https://github.com/jesseduffield/lazygit/releases/download/${LATEST_LAZYGIT_TAG}/lazygit_${LAZYGIT_VERSION}_linux_x86_64.tar.gz"
@@ -121,14 +176,13 @@ if ! command_exists lazygit; then
         if wget "$LATEST_LAZYGIT_URL" -O lazygit.tar.gz; then
             tar -xzf lazygit.tar.gz
             mv lazygit ~/bin/lazygit
-            rm lazygit.tar.gz
-            echo "lazygit installed successfully."
+            echo "lazygit updated successfully."
         else
             echo "Failed to download lazygit."
         fi
+    else
+        echo "lazygit is up to date ($LOCAL_LAZYGIT_TAG)."
     fi
-else
-    echo "lazygit is already installed."
 fi
 
 # lima (Linux VMs on macOS - Not applicable for Linux hosts)
