@@ -39,6 +39,10 @@ elif [[ "$OS_NAME" == "Linux" ]]; then
 
   ZSH_THEME="powerlevel10k/powerlevel10k"
 
+  # Automatically update Oh My Zsh without interactive prompts
+  zstyle ':omz:update' mode auto
+  zstyle ':omz:update' frequency 14
+
   plugins=(
       git
       zsh-autosuggestions
@@ -116,17 +120,30 @@ zstyle ':completion:*' menu no
 zstyle ':fzf-tab:*' fzf-flags --preview-window=right:50%:wrap
 zstyle ':fzf-tab:complete:*:*' fzf-preview 'if [ -d $realpath ]; then eza -1 --color=always $realpath; elif [ -f $realpath ]; then cat $realpath; fi'
 
-# Setup FPATH and run compinit
+# Setup FPATH and run cached compinit (regenerates at most once per 24h)
 if [[ -d "$ZSH_COMPLETIONS_PATH" ]]; then
   FPATH=$ZSH_COMPLETIONS_PATH:$FPATH
 fi
-autoload -Uz compinit &&  compinit
+
+autoload -Uz compinit
+typeset -g ZCOMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump-${HOST%%.*}-${ZSH_VERSION}"
+# Regenerate dump if older than 24 hours, otherwise load cached (-C)
+if [[ -s "$ZCOMPDUMP" && "$ZCOMPDUMP" -nt "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
+  setopt extended_glob 2>/dev/null
+  if [[ -n "$ZCOMPDUMP"(#qN.m+1) ]]; then
+    compinit -d "$ZCOMPDUMP"
+  else
+    compinit -C -d "$ZCOMPDUMP"
+  fi
+else
+  compinit -d "$ZCOMPDUMP"
+fi
 
 # Tool Autocompletions
 
 # kubectl completion (cached to prevent GKE auth triggers on startup)
 if type kubectl &>/dev/null; then
-  COMPLETION_CACHE="$HOME/.local/kubectl_completion.zsh"
+  COMPLETION_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/kubectl_completion.zsh"
   if [ ! -f "$COMPLETION_CACHE" ]; then
     mkdir -p "$(dirname "$COMPLETION_CACHE")"
     kubectl completion zsh > "$COMPLETION_CACHE" 2>/dev/null
