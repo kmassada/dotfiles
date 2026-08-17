@@ -8,6 +8,54 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to download and install individual Nerd Fonts via GitHub release tarballs
+install_nerd_fonts() {
+    local fonts=("$@")
+    if [ ${#fonts[@]} -eq 0 ]; then
+        fonts=("Hack" "NerdFontsSymbolsOnly")
+    fi
+
+    local font_dir="$HOME/.local/share/fonts/NerdFonts"
+    mkdir -p "$font_dir"
+
+    local temp_font_dir
+    temp_font_dir=$(mktemp -d)
+    local updated=false
+
+    echo "Checking and installing cherry-picked Nerd Fonts in ${font_dir}..."
+
+    for font in "${fonts[@]}"; do
+        local url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${font}.tar.xz"
+        local archive="${temp_font_dir}/${font}.tar.xz"
+        local extract_dir="${temp_font_dir}/${font}"
+        mkdir -p "${extract_dir}"
+
+        echo "Downloading ${font} from ${url}..."
+        if wget -q --show-progress "$url" -O "$archive" 2>/dev/null || curl -sSL "$url" -o "$archive"; then
+            if [ -f "$archive" ] && [ -s "$archive" ]; then
+                tar -xf "$archive" -C "$extract_dir"
+                find "$extract_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -exec mv -f {} "$font_dir/" \;
+                echo "  ✓ ${font} installed successfully."
+                updated=true
+            else
+                echo "  ✗ Downloaded archive for ${font} is empty or invalid."
+            fi
+        else
+            echo "  ✗ Failed to download ${font} from ${url}"
+        fi
+    done
+
+    rm -rf "$temp_font_dir"
+
+    if [ "$updated" = true ]; then
+        echo "Refreshing font cache..."
+        if command_exists fc-cache; then
+            fc-cache -f "$font_dir"
+        fi
+        echo "Font cache updated."
+    fi
+}
+
 # Update package lists
 sudo apt-get update
 
@@ -211,19 +259,8 @@ echo "Zsh plugins (fzf-tab, zsh-autocomplete, zsh-autosuggestions, zsh-completio
 cd ~
 rm -rf $TEMP_DIR
 
-# Nerd Fonts
-if [ ! -d "$HOME/.local/share/fonts" ] || [ -z "$(ls -A "$HOME/.local/share/fonts" 2>/dev/null)" ]; then
-    echo "Installing Hack Nerd Font..."
-    if [ ! -d ~/nerd-fonts ]; then
-        git clone --depth 1 https://github.com/ryanoasis/nerd-fonts.git ~/nerd-fonts
-    fi
-    cd ~/nerd-fonts
-    ./install.sh Hack
-    fc-cache -f -v
-    cd ~
-else
-    echo "Nerd Fonts already installed."
-fi
+# Nerd Fonts (Cherry-picked minimal installation)
+install_nerd_fonts "Hack" "NerdFontsSymbolsOnly"
 
 # Powerlevel10k Theme
 if [ -d "$HOME/.oh-my-zsh" ]; then
