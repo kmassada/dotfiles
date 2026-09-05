@@ -53,8 +53,10 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
   if [[ -f "$SYNTAX_HIGHLIGHTING_PATH" ]]; then source "$SYNTAX_HIGHLIGHTING_PATH"; fi
   if [[ -f "$POWERLEVEL10K_PATH" ]]; then source "$POWERLEVEL10K_PATH"; fi
 
-  # Podman (macOS VM socket)
-  export DOCKER_HOST='unix:///var/folders/g9/y9_50v4s37z_bzntrfv7psgm0000gn/T/podman/podman-machine-default-api.sock'
+  # Podman (macOS VM socket dynamically resolved via TMPDIR)
+  if [[ -n "$TMPDIR" ]]; then
+    export DOCKER_HOST="unix://${TMPDIR%/}/podman/podman-machine-default-api.sock"
+  fi
   export PODMAN_COMPOSE_PROVIDER_NO_MESSAGE=1
 elif [[ "$OS_NAME" == "Linux" ]]; then
   # Linux specific setup
