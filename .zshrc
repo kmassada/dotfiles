@@ -209,4 +209,3 @@ if [ -d "$HOME/.local" ]; then
     fi
   done
 fi
-
