@@ -44,7 +44,7 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
   if [[ -s "$ZCOMPDUMP" && "$ZCOMPDUMP" -nt "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
     compinit -C -d "$ZCOMPDUMP"
   else
-    compinit -d "$ZCOMPDUMP"
+    compinit -u -d "$ZCOMPDUMP"
   fi
 
   # Source plugins directly for macOS (order: fzf-tab -> autosuggestions -> syntax-highlighting)

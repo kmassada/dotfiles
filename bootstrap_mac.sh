@@ -185,6 +185,12 @@ if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
     log_info "Running brew bundle install..."
     brew bundle install "${BUNDLE_FLAGS[@]}" || log_warn "brew bundle finished with some warnings."
     log_success "Homebrew packages reconciled."
+
+    # Fix zsh compinit permissions on Homebrew share directory
+    BREW_SHARE="$(brew --prefix)/share"
+    if [[ -d "$BREW_SHARE" ]]; then
+        chmod -R go-w "$BREW_SHARE" 2>/dev/null || true
+    fi
 fi
 
 # ------------------------------------------------------------------------------
