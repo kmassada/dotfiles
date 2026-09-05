@@ -80,6 +80,8 @@ cask "gcloud-cli"
 cask "kitty"
 # Clipboard manager
 cask "maccy"
+# Open-source code editor
+cask "visual-studio-code"
 # Open-source version of the X.Org X Window System
 cask "xquartz"
 vscode "davidanson.vscode-markdownlint"
