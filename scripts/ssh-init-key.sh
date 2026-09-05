@@ -113,7 +113,9 @@ fi
 # Push to Remote
 if [ -n "$PUSH_TO_REMOTE" ]; then
     echo "🚀 Pushing public key to $PUSH_TO_REMOTE..."
-    ssh-copy-id -i "${KEY_FILE}.pub" "$PUSH_TO_REMOTE"
+    PUBKEY=$(cat "${KEY_FILE}.pub")
+    ssh -t "$PUSH_TO_REMOTE" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && (grep -qxF '$PUBKEY' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUBKEY' >> ~/.ssh/authorized_keys)"
+    echo "✅ Key pushed and configured on $PUSH_TO_REMOTE"
 fi
 
 # --- 5. Git Configuration ---
