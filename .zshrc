@@ -11,9 +11,19 @@ DISABLE_MAGIC_FUNCTIONS=true
 # OS Detection
 OS_NAME=$(uname -s)
 
+# Completion styling (MUST BE BEFORE FZF-TAB)
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' menu no
+zstyle ':fzf-tab:*' fzf-flags --preview-window=right:50%:wrap
+zstyle ':fzf-tab:complete:*:*' fzf-preview 'if [ -d $realpath ]; then eza -1 --color=always $realpath; elif [ -f $realpath ]; then cat $realpath; fi'
+
 if [[ "$OS_NAME" == "Darwin" ]]; then
   # macOS specific setup
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
   BREW_PREFIX=$(brew --prefix)
   GCLOUD_COMPLETION_PATH="$BREW_PREFIX/share/google-cloud-sdk/completion.zsh.inc"
   GCLOUD_PATH_PATH="$BREW_PREFIX/share/google-cloud-sdk/path.zsh.inc"
@@ -23,11 +33,29 @@ if [[ "$OS_NAME" == "Darwin" ]]; then
   POWERLEVEL10K_PATH="$BREW_PREFIX/share/powerlevel10k/powerlevel10k.zsh-theme"
   ZSH_COMPLETIONS_PATH="$BREW_PREFIX/share/zsh-completions"
 
-  # Source plugins directly for macOS
+  # Setup completions path before compinit
+  if [[ -d "$ZSH_COMPLETIONS_PATH" ]]; then
+    fpath=("$ZSH_COMPLETIONS_PATH" $fpath)
+  fi
+
+  # Initialize compinit BEFORE fzf-tab (regenerates at most once per 24h)
+  autoload -Uz compinit
+  typeset -g ZCOMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump-${HOST%%.*}-${ZSH_VERSION}"
+  if [[ -s "$ZCOMPDUMP" && "$ZCOMPDUMP" -nt "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
+    compinit -C -d "$ZCOMPDUMP"
+  else
+    compinit -d "$ZCOMPDUMP"
+  fi
+
+  # Source plugins directly for macOS (order: fzf-tab -> autosuggestions -> syntax-highlighting)
   if [[ -f "$FZF_TAB_PATH" ]]; then source "$FZF_TAB_PATH"; fi
   if [[ -f "$AUTOSUGGESTIONS_PATH" ]]; then source "$AUTOSUGGESTIONS_PATH"; fi
   if [[ -f "$SYNTAX_HIGHLIGHTING_PATH" ]]; then source "$SYNTAX_HIGHLIGHTING_PATH"; fi
   if [[ -f "$POWERLEVEL10K_PATH" ]]; then source "$POWERLEVEL10K_PATH"; fi
+
+  # Podman (macOS VM socket)
+  export DOCKER_HOST='unix:///var/folders/g9/y9_50v4s37z_bzntrfv7psgm0000gn/T/podman/podman-machine-default-api.sock'
+  export PODMAN_COMPOSE_PROVIDER_NO_MESSAGE=1
 elif [[ "$OS_NAME" == "Linux" ]]; then
   # Linux specific setup
   GCLOUD_COMPLETION_PATH="/usr/share/google-cloud-sdk/completion.zsh.inc" # Common path, adjust if needed
@@ -49,10 +77,10 @@ elif [[ "$OS_NAME" == "Linux" ]]; then
 
   plugins=(
       git
-      zsh-autosuggestions
-      zsh-syntax-highlighting
       zsh-completions
       fzf-tab
+      zsh-autosuggestions
+      zsh-syntax-highlighting
   )
 
   if [ -d "$ZSH" ]; then
@@ -117,12 +145,6 @@ _fzf_compgen_path() {
   rg --files --hidden --ignore-file "$HOME/.rgignore" "$1"
 }
 
-# Completion styling (MUST BE BEFORE FZF-TAB)
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-zstyle ':completion:*' menu no
-#zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-zstyle ':fzf-tab:*' fzf-flags --preview-window=right:50%:wrap
-zstyle ':fzf-tab:complete:*:*' fzf-preview 'if [ -d $realpath ]; then eza -1 --color=always $realpath; elif [ -f $realpath ]; then cat $realpath; fi'
 
 # Tool Autocompletions
 
@@ -197,9 +219,6 @@ export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
 # Iterm integration
 #test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
 
-# Podman
-export DOCKER_HOST='unix:///var/folders/g9/y9_50v4s37z_bzntrfv7psgm0000gn/T/podman/podman-machine-default-api.sock'
-export PODMAN_COMPOSE_PROVIDER_NO_MESSAGE=1
 
 # Source all .zsh files in local/ (private overrides)
 if [ -d "$HOME/.local" ]; then
