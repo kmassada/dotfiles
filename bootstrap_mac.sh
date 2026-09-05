@@ -30,6 +30,7 @@ CLI_ONLY=false
 NO_CASKS=false
 NO_MAS=false
 NO_SSH=false
+NO_SSHD=false
 NO_PULL=false
 
 usage() {
@@ -40,7 +41,8 @@ Options:
   --cli-only     Install only command-line packages (skips GUI casks & Mac App Store)
   --no-casks     Skip GUI applications in Brewfile
   --no-mas       Skip Mac App Store applications in Brewfile
-  --no-ssh       Skip SSH key setup for GitHub
+  --no-ssh       Skip SSH client key setup for GitHub
+  --no-sshd      Skip enabling Remote Login (SSH server)
   --no-pull      Skip git pull if dotfiles repo already exists
   -h, --help     Show this help message
 
@@ -59,6 +61,7 @@ while [[ $# -gt 0 ]]; do
         --no-casks)  NO_CASKS=true; shift ;;
         --no-mas)    NO_MAS=true; shift ;;
         --no-ssh)    NO_SSH=true; shift ;;
+        --no-sshd)   NO_SSHD=true; shift ;;
         --no-pull)   NO_PULL=true; shift ;;
         -h|--help)   usage ;;
         *)           log_error "Unknown option: $1"; usage ;;
@@ -185,7 +188,26 @@ if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 7. SSH & GitHub Authentication
+# 7. Enable Remote Login (SSH Server)
+# ------------------------------------------------------------------------------
+if [ "$NO_SSHD" = false ]; then
+    log_info "Checking Remote Login (SSH Server)..."
+    if ! nc -z -G 1 localhost 22 &>/dev/null; then
+        log_info "Enabling SSH server via launchctl (requires sudo)..."
+        sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || \
+            log_warn "Could not enable ssh.plist automatically. You can enable it via System Settings -> General -> Sharing -> Remote Login."
+        if nc -z -G 1 localhost 22 &>/dev/null; then
+            log_success "Remote Login enabled (SSH server running on port 22)."
+        else
+            log_warn "Port 22 still not responding. Check System Settings -> General -> Sharing -> Remote Login."
+        fi
+    else
+        log_success "Remote Login (SSH server) is already active on port 22."
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 8. SSH & GitHub Authentication
 # ------------------------------------------------------------------------------
 if [ "$NO_SSH" = false ]; then
     SSH_SCRIPT="$DOTFILES_DIR/scripts/ssh-init-key.sh"
@@ -196,7 +218,7 @@ if [ "$NO_SSH" = false ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Finished
+# 9. Finished
 # ------------------------------------------------------------------------------
 echo ""
 log_success "macOS bootstrap complete!"
