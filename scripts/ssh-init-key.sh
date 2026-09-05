@@ -105,8 +105,14 @@ if [ "$COPY_TO_CLIPBOARD" = true ]; then
     if command -v pbcopy > /dev/null; then
         cat "${KEY_FILE}.pub" | pbcopy
         echo "📋 Public key copied to clipboard (pbcopy)."
+    elif command -v wl-copy > /dev/null; then
+        cat "${KEY_FILE}.pub" | wl-copy
+        echo "📋 Public key copied to clipboard (wl-copy)."
+    elif command -v xclip > /dev/null; then
+        cat "${KEY_FILE}.pub" | xclip -selection clipboard
+        echo "📋 Public key copied to clipboard (xclip)."
     else
-        echo "⚠️  pbcopy not found, skipping clipboard."
+        echo "⚠️  No clipboard utility found (pbcopy/wl-copy/xclip), skipping clipboard."
     fi
 fi
 
