@@ -22,7 +22,7 @@ usage() {
     echo "  -c, --clip      Copy public key to macOS clipboard (pbcopy)"
     echo "  -g, --git       Configure Git to rewrite https://github.com/ to git@github.com:"
     echo "  -t, --test      Test SSH connection to host (e.g. ssh -T git@github.com)"
-    echo "  --push <dest>   Push public key to remote host (e.g., --push admin@10.0.0.5)"
+    echo "  --push [dest]   Push public key to remote host (Defaults to <user>@<host>)"
     exit 1
 }
 
@@ -36,7 +36,15 @@ while [[ $# -gt 0 ]]; do
         -c|--clip) COPY_TO_CLIPBOARD=true; shift ;;
         -g|--git)  CONFIGURE_GIT=true; shift ;;
         -t|--test) TEST_CONNECTION=true; shift ;;
-        --push)    PUSH_TO_REMOTE="$2"; shift 2 ;;
+        --push)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                PUSH_TO_REMOTE="$2"
+                shift 2
+            else
+                PUSH_TO_REMOTE="DEFAULT"
+                shift 1
+            fi
+            ;;
         *) usage ;;
     esac
 done
@@ -45,6 +53,13 @@ done
 if [[ -z "$SSH_HOST" ]]; then
     echo "❌ Error: Host is required."
     usage
+fi
+
+# Resolve default push target (<user>@<host>) if requested
+if [[ "$PUSH_TO_REMOTE" == "DEFAULT" ]]; then
+    PUSH_TO_REMOTE="$SSH_USER@$SSH_HOST"
+elif [[ -n "$PUSH_TO_REMOTE" && "$PUSH_TO_REMOTE" != *"@"* ]]; then
+    PUSH_TO_REMOTE="$SSH_USER@$PUSH_TO_REMOTE"
 fi
 
 KEY_FILE="$KEY_PATH_BASE/$SSH_USER@$SSH_HOST"
@@ -120,8 +135,11 @@ fi
 if [ -n "$PUSH_TO_REMOTE" ]; then
     echo "🚀 Pushing public key to $PUSH_TO_REMOTE..."
     PUBKEY=$(cat "${KEY_FILE}.pub")
-    ssh -t "$PUSH_TO_REMOTE" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && (grep -qxF '$PUBKEY' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUBKEY' >> ~/.ssh/authorized_keys)"
-    echo "✅ Key pushed and configured on $PUSH_TO_REMOTE"
+    if ssh -t "$PUSH_TO_REMOTE" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && (grep -qxF '$PUBKEY' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUBKEY' >> ~/.ssh/authorized_keys)"; then
+        echo "✅ Key pushed and configured on $PUSH_TO_REMOTE"
+    else
+        echo "❌ Failed to push key to $PUSH_TO_REMOTE"
+    fi
 fi
 
 # --- 5. Git Configuration ---
