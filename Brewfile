@@ -71,6 +71,8 @@ brew "zsh-autosuggestions"
 brew "zsh-completions"
 # Fish shell like syntax highlighting for zsh
 brew "zsh-syntax-highlighting"
+# Mac App Store command-line interface
+brew "mas"
 # Desktop password and login vault
 cask "bitwarden"
 cask "font-hack-nerd-font"
@@ -105,3 +107,25 @@ vscode "ms-toolsai.vscode-jupyter-cell-tags"
 vscode "ms-toolsai.vscode-jupyter-slideshow"
 vscode "redhat.vscode-yaml"
 vscode "tim-koehler.helm-intellisense"
+# Visual design platform
+mas "Canva", id: 897446215
+# EXIF metadata viewer
+mas "ExifTool Reader", id: 1636199770
+# Music creation studio
+mas "GarageBand", id: 682658836
+# News comparison and media bias platform
+mas "Ground News", id: 1324203419
+# Home automation client
+mas "Home Assistant", id: 1099568401
+# Video editing application
+mas "iMovie", id: 408981434
+# Presentation software
+mas "Keynote", id: 409183694
+# Spreadsheet application
+mas "Numbers", id: 409203825
+# Word processor
+mas "Pages", id: 409201541
+# Duplicate and similar photo finder
+mas "PhotoSweeper", id: 463362050
+# Messaging client
+mas "WhatsApp", id: 310633997

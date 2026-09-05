@@ -79,9 +79,24 @@ chmod +x install_linux.sh install_zsh_plugins.sh
 ./install_zsh_plugins.sh
 ```
 
-#### macOS
+#### macOS (Automated Bootstrap)
 
-Install all required tools, casks, and taps using the Brewfile:
+Run the automated bootstrap script to install Xcode CLI tools, Homebrew, GNU Stow, Brewfile packages (CLI, Casks, Mac App Store via `mas`), dotfiles, and GitHub SSH key:
+
+```bash
+chmod +x bootstrap_mac.sh
+./bootstrap_mac.sh
+```
+
+**Configurable Options:**
+```bash
+./bootstrap_mac.sh --cli-only   # Lightweight setup: CLI tools & dotfiles only (skips GUI casks & App Store)
+./bootstrap_mac.sh --no-mas     # Install CLI and GUI casks, but skip Mac App Store apps
+./bootstrap_mac.sh --no-casks   # Install CLI and Mac App Store apps, skip GUI casks
+./bootstrap_mac.sh --no-ssh     # Skip SSH key setup
+```
+
+Or manually install via Homebrew bundle:
 
 ```bash
 brew bundle install --file=~/src/dotfiles/Brewfile

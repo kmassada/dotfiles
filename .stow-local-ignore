@@ -1,0 +1,9 @@
+# Files and directories to ignore when stowing dotfiles into ~
+^Brewfile$
+^README.*
+.*\.sh$
+.*\.md$
+^LICENSE$
+^\.git.*
+^scripts$
+^\.stow-local-ignore$
