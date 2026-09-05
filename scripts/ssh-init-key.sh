@@ -9,6 +9,7 @@ SSH_PORT=22
 COPY_TO_CLIPBOARD=false
 PUSH_TO_REMOTE=""
 CONFIGURE_GIT=false
+TEST_CONNECTION=false
 
 usage() {
     echo "Usage: $0 --host <host> [--user <user>] [--mode <mode>] [--path <path>]"
@@ -20,6 +21,7 @@ usage() {
     echo "  -p, --path      Base directory for keys (Defaults to ~/.ssh)"
     echo "  -c, --clip      Copy public key to macOS clipboard (pbcopy)"
     echo "  -g, --git       Configure Git to rewrite https://github.com/ to git@github.com:"
+    echo "  -t, --test      Test SSH connection to host (e.g. ssh -T git@github.com)"
     echo "  --push <dest>   Push public key to remote host (e.g., --push admin@10.0.0.5)"
     exit 1
 }
@@ -33,6 +35,7 @@ while [[ $# -gt 0 ]]; do
         -p|--path) KEY_PATH_BASE="$2"; shift 2 ;;
         -c|--clip) COPY_TO_CLIPBOARD=true; shift ;;
         -g|--git)  CONFIGURE_GIT=true; shift ;;
+        -t|--test) TEST_CONNECTION=true; shift ;;
         --push)    PUSH_TO_REMOTE="$2"; shift 2 ;;
         *) usage ;;
     esac
@@ -118,6 +121,30 @@ if [[ "$SSH_HOST" == *"github.com"* || "$CONFIGURE_GIT" = true ]]; then
     echo "⚙️  Configuring Git to rewrite HTTPS to SSH for GitHub..."
     git config --global url."git@github.com:".insteadOf "https://github.com/"
     echo "✅ Set git config --global url.\"git@github.com:\".insteadOf \"https://github.com/\""
+fi
+
+# --- 6. Test Connection ---
+if [ "$TEST_CONNECTION" = true ]; then
+    echo "🔍 Testing SSH connection..."
+    if [[ "$SSH_HOST" == *"github.com"* ]]; then
+        TEST_OUTPUT=$(ssh -T -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -i "$KEY_FILE" git@"$SSH_HOST" 2>&1)
+        echo "$TEST_OUTPUT"
+        if echo "$TEST_OUTPUT" | grep -qi "successfully authenticated"; then
+            echo "🎉 Successfully authenticated with $SSH_HOST!"
+        else
+            echo "⚠️  Authentication failed. Verify that your public key (${KEY_FILE}.pub) is added to your account."
+        fi
+    else
+        TEST_TARGET="$SSH_USER@$SSH_HOST"
+        TEST_OUTPUT=$(ssh -T -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -i "$KEY_FILE" "$TEST_TARGET" 2>&1)
+        echo "$TEST_OUTPUT"
+    fi
+else
+    if [[ "$SSH_HOST" == *"github.com"* ]]; then
+        echo "💡 Test connection anytime: ssh -T git@$SSH_HOST"
+    else
+        echo "💡 Test connection anytime: ssh -T $SSH_USER@$SSH_HOST"
+    fi
 fi
 
 echo "✅ Done. Key: $KEY_FILE"
