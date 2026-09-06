@@ -125,6 +125,11 @@ show_discovery() {
     check_item "Finder" "Show Path Bar"            "true"        "com.apple.finder" "ShowPathbar"
     check_item "Finder" "Show Status Bar"          "true"        "com.apple.finder" "ShowStatusBar"
     check_item "Finder" "Search Scope Default"     "Current Folder" "com.apple.finder" "FXDefaultSearchScope"
+    check_item "Finder" "New Window Target"        "Home (~)"    "com.apple.finder" "NewWindowTarget"
+    check_item "Finder" "Show Preview Pane"        "true"        "com.apple.finder" "ShowPreviewPane"
+    check_item "Finder" "Extension Change Warning" "false"       "com.apple.finder" "FXEnableExtensionChangeWarning"
+    check_item "Finder" "Show Drives on Desktop"   "false"       "com.apple.finder" "ShowHardDrivesOnDesktop"
+    check_item "Finder" "Show Recent Tags"         "false"       "com.apple.finder" "ShowRecentTags"
 
     echo ""
 }
@@ -148,7 +153,7 @@ apply_settings() {
     echo "  → Dock: Hide recent applications (false)"
     defaults write com.apple.dock show-recents -bool false
 
-    # --- Finder Settings ---
+    # --- Finder Core Settings ---
     echo "  → Finder: Show hidden files (true)"
     defaults write com.apple.finder AppleShowAllFiles -bool true
 
@@ -169,6 +174,28 @@ apply_settings() {
 
     echo "  → Finder: Default search scope to current folder (SCcf)"
     defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
+
+    echo "  → Finder: New window target set to Home (~)"
+    defaults write com.apple.finder NewWindowTarget -string "PfHm"
+    defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/"
+
+    echo "  → Finder: Show preview pane (true)"
+    defaults write com.apple.finder ShowPreviewPane -bool true
+
+    echo "  → Finder: Disable warning when changing file extension"
+    defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+
+    # --- Desktop Cleanliness (Hide disks/servers from wallpaper) ---
+    echo "  → Finder: Clean desktop (hide hard drives, external drives, servers)"
+    defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
+    defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool false
+    defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool false
+    defaults write com.apple.finder ShowMountedServersOnDesktop -bool false
+
+    # --- Tag Clutter Reduction ---
+    echo "  → Finder: Hide recent tags and clear tag clutter"
+    defaults write com.apple.finder ShowRecentTags -bool false
+    defaults write com.apple.finder FavoriteTagNames -array ""
 
     # --- Desktop Services Clutter ---
     echo "  → System: Prevent .DS_Store creation on network & USB volumes"
