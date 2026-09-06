@@ -118,6 +118,9 @@ show_discovery() {
     check_item "Dock"   "Animation Duration"       "0.15s"       "com.apple.dock"   "autohide-time-modifier"
     check_item "Dock"   "Minimize to App Icon"     "true"        "com.apple.dock"   "minimize-to-application"
     check_item "Dock"   "Show Recent Apps"         "false"       "com.apple.dock"   "show-recents"
+    check_item "Dock"   "Dock Magnification"       "false"       "com.apple.dock"   "magnification"
+    check_item "Dock"   "Dock Position"            "bottom"      "com.apple.dock"   "orientation"
+    check_item "Dock"   "Minimize Effect"          "scale"       "com.apple.dock"   "mineffect"
     check_item "Finder" "Show Hidden Files"        "true"        "com.apple.finder" "AppleShowAllFiles"
     check_item "Finder" "Show All Extensions"      "true"        "NSGlobalDomain"   "AppleShowAllExtensions"
     check_item "Finder" "Default View Style"       "$(format_val "$VIEW_STYLE")" "com.apple.finder" "FXPreferredViewStyle"
@@ -152,6 +155,15 @@ apply_settings() {
 
     echo "  → Dock: Hide recent applications (false)"
     defaults write com.apple.dock show-recents -bool false
+
+    echo "  → Dock: Magnification disabled (false)"
+    defaults write com.apple.dock magnification -bool false
+
+    echo "  → Dock: Position set to bottom"
+    defaults write com.apple.dock orientation -string "bottom"
+
+    echo "  → Dock: Minimize effect set to scale"
+    defaults write com.apple.dock mineffect -string "scale"
 
     # --- Finder Core Settings ---
     echo "  → Finder: Show hidden files (true)"
