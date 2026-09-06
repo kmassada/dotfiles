@@ -4,6 +4,7 @@ local/
 .config/configstore
 .config/gcloud/
 .config/sharing-snips/
+.config/gws/
 __pycache__/
 *.pyc
 .DS_Store
