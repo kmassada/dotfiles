@@ -90,11 +90,12 @@ chmod +x bootstrap_mac.sh
 
 **Configurable Options:**
 ```bash
-./bootstrap_mac.sh --cli-only   # Lightweight setup: CLI tools & dotfiles only (skips GUI casks & App Store)
-./bootstrap_mac.sh --no-mas     # Install CLI and GUI casks, but skip Mac App Store apps
-./bootstrap_mac.sh --no-casks   # Install CLI and Mac App Store apps, skip GUI casks
-./bootstrap_mac.sh --no-ssh     # Skip SSH client key setup
-./bootstrap_mac.sh --no-sshd    # Skip enabling Remote Login (SSH server)
+./bootstrap_mac.sh --cli-only     # Lightweight setup: CLI tools & dotfiles only (skips GUI casks, App Store, & OS settings)
+./bootstrap_mac.sh --no-mas       # Install CLI and GUI casks, but skip Mac App Store apps
+./bootstrap_mac.sh --no-casks     # Install CLI and Mac App Store apps, skip GUI casks
+./bootstrap_mac.sh --no-settings  # Skip configuring macOS preferences (Dock, Finder, Ergonomics)
+./bootstrap_mac.sh --no-ssh       # Skip SSH client key setup
+./bootstrap_mac.sh --no-sshd      # Skip enabling Remote Login (SSH server)
 ```
 
 Or manually install via Homebrew bundle:

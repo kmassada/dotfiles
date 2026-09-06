@@ -31,6 +31,7 @@ NO_CASKS=false
 NO_MAS=false
 NO_SSH=false
 NO_SSHD=false
+NO_SETTINGS=false
 NO_PULL=false
 
 usage() {
@@ -38,16 +39,17 @@ usage() {
 Usage: $0 [OPTIONS]
 
 Options:
-  --cli-only     Install only command-line packages (skips GUI casks & Mac App Store)
+  --cli-only     Install only command-line packages (skips GUI casks, App Store, & OS preferences)
   --no-casks     Skip GUI applications in Brewfile
   --no-mas       Skip Mac App Store applications in Brewfile
+  --no-settings  Skip configuring macOS preferences (Dock, Finder, Ergonomics)
   --no-ssh       Skip SSH client key setup for GitHub
   --no-sshd      Skip enabling Remote Login (SSH server)
   --no-pull      Skip git pull if dotfiles repo already exists
   -h, --help     Show this help message
 
 Examples:
-  $0                     # Full installation (CLI, GUI apps, Mac App Store, dotfiles, SSH)
+  $0                     # Full installation (CLI, GUI apps, Mac App Store, dotfiles, SSH, OS settings)
   $0 --cli-only          # Lightweight/headless setup (only CLI tools & dotfiles)
   $0 --no-mas            # Install CLI & Casks, but skip Mac App Store apps
 USAGE
@@ -57,14 +59,15 @@ USAGE
 # Parse Command-Line Arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --cli-only)  CLI_ONLY=true; shift ;;
-        --no-casks)  NO_CASKS=true; shift ;;
-        --no-mas)    NO_MAS=true; shift ;;
-        --no-ssh)    NO_SSH=true; shift ;;
-        --no-sshd)   NO_SSHD=true; shift ;;
-        --no-pull)   NO_PULL=true; shift ;;
-        -h|--help)   usage ;;
-        *)           log_error "Unknown option: $1"; usage ;;
+        --cli-only)    CLI_ONLY=true; NO_SETTINGS=true; shift ;;
+        --no-casks)    NO_CASKS=true; shift ;;
+        --no-mas)      NO_MAS=true; shift ;;
+        --no-settings) NO_SETTINGS=true; shift ;;
+        --no-ssh)      NO_SSH=true; shift ;;
+        --no-sshd)     NO_SSHD=true; shift ;;
+        --no-pull)     NO_PULL=true; shift ;;
+        -h|--help)     usage ;;
+        *)             log_error "Unknown option: $1"; usage ;;
     esac
 done
 
@@ -224,7 +227,22 @@ if [ "$NO_SSH" = false ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 9. Finished
+# 9. macOS Preferences (Dock, Finder, Ergonomics, Gestures)
+# ------------------------------------------------------------------------------
+if [ "$NO_SETTINGS" = false ]; then
+    SETTINGS_SCRIPT="$DOTFILES_DIR/scripts/macos-settings.sh"
+    if [[ -x "$SETTINGS_SCRIPT" ]]; then
+        log_info "Configuring macOS system, Dock, and Finder preferences..."
+        "$SETTINGS_SCRIPT" --apply
+    else
+        log_warn "Settings script not found or not executable at $SETTINGS_SCRIPT"
+    fi
+else
+    log_info "Skipping macOS preferences (--no-settings or --cli-only)."
+fi
+
+# ------------------------------------------------------------------------------
+# 10. Finished
 # ------------------------------------------------------------------------------
 echo ""
 log_success "macOS bootstrap complete!"

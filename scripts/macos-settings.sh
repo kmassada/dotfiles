@@ -59,11 +59,27 @@ done
 
 read_local() {
     local domain="$1" key="$2"
+    if [[ "$domain" == "com.apple.symbolichotkeys" ]]; then
+        local out
+        out="$(defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys 2>/dev/null || true)"
+        if echo "$out" | grep -A 2 -E "^[[:space:]]*${key} = " | grep -q "enabled = 0;"; then
+            echo "disabled"
+        elif echo "$out" | grep -A 2 -E "^[[:space:]]*${key} = " | grep -q "enabled = 1;"; then
+            echo "enabled"
+        else
+            echo "<unset>"
+        fi
+        return
+    fi
     defaults read "$domain" "$key" 2>/dev/null || echo "<unset>"
 }
 
 read_remote() {
     local host="$1" domain="$2" key="$3"
+    if [[ "$domain" == "com.apple.symbolichotkeys" ]]; then
+        ssh -o BatchMode=yes -o ConnectTimeout=4 "$host" "bash -c 'out=\$(defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys 2>/dev/null); if echo \"\$out\" | grep -A 2 -E \"^[[:space:]]*${key} = \" | grep -q \"enabled = 0;\"; then echo \"disabled\"; elif echo \"\$out\" | grep -A 2 -E \"^[[:space:]]*${key} = \" | grep -q \"enabled = 1;\"; then echo \"enabled\"; else echo \"<unset>\"; fi'" 2>/dev/null || echo "<unreachable>"
+        return
+    fi
     ssh -o BatchMode=yes -o ConnectTimeout=4 "$host" "defaults read '$domain' '$key' 2>/dev/null || echo '<unset>'" 2>/dev/null || echo "<unreachable>"
 }
 
@@ -107,6 +123,15 @@ format_val() {
         else
             echo "default (unset)"
         fi
+        return
+    fi
+    if [[ "$key" == "60" || "$key" == "61" ]]; then
+        case "$val" in
+            disabled) echo "disabled (safe)" ;;
+            enabled)  echo "enabled (conflict)" ;;
+            "<unset>") echo "default (conflict)" ;;
+            *) echo "$val" ;;
+        esac
         return
     fi
     case "$val" in
@@ -183,6 +208,8 @@ show_discovery() {
     check_item "Sound"    "UI Sound Effects"         "false"       "com.apple.systemsound"   "com.apple.sound.uiaudio.enabled"
     check_item "Keyboard" "Key Repeat Rate"          "1 (fastest)" "NSGlobalDomain"          "KeyRepeat"
     check_item "Keyboard" "Delay Until Repeat"       "10 (short)"  "NSGlobalDomain"          "InitialKeyRepeat"
+    check_item "Keyboard" "Disable Ctrl+Space Input Sw" "disabled" "com.apple.symbolichotkeys" "60"
+    check_item "Keyboard" "Disable Ctrl+Opt+Space Sw"   "disabled" "com.apple.symbolichotkeys" "61"
     check_item "Trackpad" "Tap to Click"             "true"        "com.apple.AppleMultitouchTrackpad" "Clicking"
     check_item "Trackpad" "Drag with Drag Lock"      "true"        "com.apple.AppleMultitouchTrackpad" "DragLock"
     check_item "Trackpad" "3-Finger Vertical Swipe"  "Mission/Exposé" "com.apple.AppleMultitouchTrackpad" "TrackpadThreeFingerVertSwipeGesture"
@@ -301,12 +328,16 @@ apply_settings() {
     echo "  → Sound: Disable UI sound effects"
     defaults write com.apple.systemsound "com.apple.sound.uiaudio.enabled" -int 0
 
-    # --- Keyboard Ergonomics ---
+    # --- Keyboard Ergonomics & Tmux Compatibility ---
     echo "  → Keyboard: Set key repeat rate to fast (1)"
     defaults write NSGlobalDomain KeyRepeat -int 1
 
     echo "  → Keyboard: Set initial key repeat delay to short (10)"
     defaults write NSGlobalDomain InitialKeyRepeat -int 10
+
+    echo "  → Keyboard: Disable Ctrl+Space input source switcher (prevents Tmux prefix conflict)"
+    defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 60 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>262144</integer></array><key>type</key><string>standard</string></dict></dict>"
+    defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 61 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>786432</integer></array><key>type</key><string>standard</string></dict></dict>"
 
     # --- Trackpad & Gestures ---
     echo "  → Trackpad: Enable Tap to Click"
