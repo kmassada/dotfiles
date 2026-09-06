@@ -3,13 +3,15 @@
 # ==============================================================================
 # setup.sh - Antigravity Environment Setup and Configuration Wrapper
 # ==============================================================================
-# Shell wrapper around config.py for Antigravity, Skills & Rules config:
+# Shell wrapper around config.py for Antigravity, Skills, Rules & MCP config:
 #   1. Downloads individual agent skills into ~/.agents/skills
 #   2. Downloads individual agent rules into ~/.agents/rules
-#   3. Configures global skills discovery (~/.gemini/config/skills.json)
-#   4. Configures global rules discovery (~/.gemini/config/rules.json & rules symlink)
-#   5. Antigravity CLI model provider (~/.gemini/antigravity-cli/settings.json)
-#   6. Local environment exports (~/.local/gemini_auth.zsh and macOS launchctl)
+#   3. Syncs MCP server configurations into ~/.agents/mcp
+#   4. Configures global skills discovery (~/.gemini/config/skills.json)
+#   5. Configures global rules discovery (~/.gemini/config/rules.json & rules symlink)
+#   6. Configures global MCP servers (~/.gemini/config/mcp_config.json)
+#   7. Antigravity CLI model provider (~/.gemini/antigravity-cli/settings.json)
+#   8. Local environment exports (~/.local/gemini_auth.zsh and macOS launchctl)
 # ==============================================================================
 
 set -eo pipefail
@@ -34,6 +36,7 @@ APPLY=false
 API_KEY=""
 SKILLS_DIR="$HOME/.agents/skills"
 RULES_DIR="$HOME/.agents/rules"
+MCP_DIR="$HOME/.agents/mcp"
 REPO_URL="${SKILLS_REPO_URL:-https://github.com/kmassada/agent-skills.git}"
 CACHE_DIR="$HOME/.agents/.cache/agent-skills"
 
@@ -46,12 +49,13 @@ ${BOLD}Options:${RESET}
   --key <api_key>       Set or update GEMINI_API_KEY (stored in ~/.local/gemini_auth.zsh)
   --skills-dir <path>   Universal skills directory (Default: ~/.agents/skills)
   --rules-dir <path>    Universal rules directory (Default: ~/.agents/rules)
+  --mcp-dir <path>      Universal MCP configurations directory (Default: ~/.agents/mcp)
   --repo <url>          Skills Git repository URL (Default: https://github.com/kmassada/agent-skills.git)
   -h, --help            Show this help message
 
 ${BOLD}Examples:${RESET}
   $0                                      # Audit current Antigravity configuration
-  $0 --apply                             # Download skills/rules and configure discovery
+  $0 --apply                             # Download skills/rules/mcp and configure discovery
   $0 --apply --key "AIzaSy..."           # Configure environment and store Gemini API key
 USAGE
     exit 0
@@ -63,6 +67,7 @@ while [[ $# -gt 0 ]]; do
         --key|--api-key) API_KEY="$2"; shift 2 ;;
         --skills-dir)    SKILLS_DIR="$2"; shift 2 ;;
         --rules-dir)     RULES_DIR="$2"; shift 2 ;;
+        --mcp-dir)       MCP_DIR="$2"; shift 2 ;;
         --repo)          REPO_URL="$2"; shift 2 ;;
         -h|--help)       usage ;;
         *) echo "${RED}Unknown option: $1${RESET}"; usage ;;
@@ -88,18 +93,20 @@ if [ "$APPLY" = true ]; then
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$SKILLS_DIR"
     mkdir -p "$RULES_DIR"
+    mkdir -p "$MCP_DIR"
     mkdir -p "$LOCAL_DIR"
-    log_success "Directories verified (~/.gemini/config, ~/.agents/skills, ~/.agents/rules, ~/.local)"
+    log_success "Directories verified (~/.gemini/config, ~/.agents/skills, ~/.agents/rules, ~/.agents/mcp, ~/.local)"
 else
     [ -d "$CONFIG_DIR" ] && log_success "Config directory exists: $CONFIG_DIR" || log_warn "Missing config directory: $CONFIG_DIR"
     [ -d "$SKILLS_DIR" ] && log_success "Skills directory exists: $SKILLS_DIR" || log_warn "Missing skills directory: $SKILLS_DIR"
     [ -d "$RULES_DIR" ]  && log_success "Rules directory exists:  $RULES_DIR"  || log_warn "Missing rules directory:  $RULES_DIR"
+    [ -d "$MCP_DIR" ]    && log_success "MCP directory exists:    $MCP_DIR"    || log_warn "Missing MCP directory:    $MCP_DIR"
 fi
 
 # ------------------------------------------------------------------------------
-# 2. Download & Install Skills & Rules from Repository
+# 2. Download & Install Skills, Rules & MCP from Repository
 # ------------------------------------------------------------------------------
-log_info "2. Syncing skills and rules from repository ($REPO_URL)..."
+log_info "2. Syncing skills, rules and MCP from repository ($REPO_URL)..."
 
 if [ "$APPLY" = true ]; then
     mkdir -p "$(dirname "$CACHE_DIR")"
@@ -117,10 +124,12 @@ if [ "$APPLY" = true ]; then
         }
     fi
 
-    # Fallback to local source if cache is missing rules
-    if [ ! -d "$CACHE_DIR/rules" ] && [ -d "$HOME/src/agent-skills/rules" ]; then
-        mkdir -p "$CACHE_DIR"
-        rsync -a --exclude='.git' "$HOME/src/agent-skills/" "$CACHE_DIR/"
+    # Fallback to local source if cache is missing rules or mcp
+    if [ ! -d "$CACHE_DIR/rules" ] || [ ! -d "$CACHE_DIR/mcp" ]; then
+        if [ -d "$HOME/src/agent-skills" ]; then
+            mkdir -p "$CACHE_DIR"
+            rsync -a --exclude='.git' "$HOME/src/agent-skills/" "$CACHE_DIR/"
+        fi
     fi
 
     # Install individual skills (standalone directories, no symlinks to src/)
@@ -148,17 +157,28 @@ if [ "$APPLY" = true ]; then
             done
             log_success "Installed $RULE_COUNT rules into $RULES_DIR"
         fi
+
+        # Install MCP configurations (standalone templates and mcp_config.json)
+        if [ -d "$CACHE_DIR/mcp" ]; then
+            mkdir -p "$MCP_DIR"
+            rsync -a --delete "$CACHE_DIR/mcp/" "$MCP_DIR/"
+            log_success "Installed MCP configurations into $MCP_DIR"
+        fi
     fi
 else
     INSTALLED_SKILLS=0
     INSTALLED_RULES=0
+    INSTALLED_MCP=0
     if [ -d "$SKILLS_DIR" ]; then
         INSTALLED_SKILLS=$(find "$SKILLS_DIR" -maxdepth 2 -name "SKILL.md" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
     fi
     if [ -d "$RULES_DIR" ]; then
         INSTALLED_RULES=$(find "$RULES_DIR" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
     fi
-    log_success "Currently installed: $INSTALLED_SKILLS skills, $INSTALLED_RULES rules"
+    if [ -d "$MCP_DIR" ]; then
+        INSTALLED_MCP=$(find "$MCP_DIR" -maxdepth 1 -name "*.json" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+    fi
+    log_success "Currently installed: $INSTALLED_SKILLS skills, $INSTALLED_RULES rules, $INSTALLED_MCP MCP config(s)"
 fi
 
 # ------------------------------------------------------------------------------
@@ -223,9 +243,37 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 5. Antigravity Model Provider (~/.gemini/antigravity-cli/settings.json)
+# 5. Universal MCP Configuration (~/.gemini/config/mcp_config.json)
 # ------------------------------------------------------------------------------
-log_info "5. Checking Antigravity model provider (~/.gemini/antigravity-cli/settings.json)..."
+log_info "5. Checking global MCP configuration (~/.gemini/config/mcp_config.json)..."
+
+MCP_SRC="$MCP_DIR/mcp_config.json"
+[ -f "$MCP_SRC" ] || MCP_SRC="$HOME/src/agent-skills/mcp/mcp_config.json"
+
+if [ "$APPLY" = true ]; then
+    MCP_RES=$(python3 "$PY_ENGINE" apply-mcp --mcp-source "$MCP_SRC")
+    if [ "$MCP_RES" = "UPDATED" ]; then
+        log_success "Configured mcp_config.json with servers from: $MCP_SRC"
+    else
+        log_success "mcp_config.json already contains MCP server definitions"
+    fi
+
+    # Antigravity CLI native link
+    mkdir -p "$HOME/.gemini/antigravity-cli"
+    ln -sfn "$CONFIG_DIR/mcp_config.json" "$HOME/.gemini/antigravity-cli/mcp_config.json"
+    log_success "Linked mcp_config.json to ~/.gemini/antigravity-cli/mcp_config.json"
+else
+    if python3 "$PY_ENGINE" check-mcp --mcp-source "$MCP_SRC" &>/dev/null; then
+        log_success "mcp_config.json is properly configured"
+    else
+        log_warn "mcp_config.json needs update (Run with --apply to configure)"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 6. Antigravity Model Provider (~/.gemini/antigravity-cli/settings.json)
+# ------------------------------------------------------------------------------
+log_info "6. Checking Antigravity model provider (~/.gemini/antigravity-cli/settings.json)..."
 
 if [ "$APPLY" = true ]; then
     AGY_RES=$(python3 "$PY_ENGINE" apply-provider)
@@ -244,9 +292,9 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. Shell & GUI Environment Variables (~/.local/gemini_auth.zsh)
+# 7. Shell & GUI Environment Variables (~/.local/gemini_auth.zsh)
 # ------------------------------------------------------------------------------
-log_info "6. Checking environment variables (GEMINI_API_KEY)..."
+log_info "7. Checking environment variables (GEMINI_API_KEY)..."
 
 AUTH_ZSH="$LOCAL_DIR/gemini_auth.zsh"
 
@@ -283,8 +331,10 @@ if [ "$APPLY" = true ]; then
     echo "${GREEN}${BOLD}Setup applied successfully!${RESET}"
     echo "  - Skills directory: ${CYAN}$SKILLS_DIR${RESET}"
     echo "  - Rules directory:  ${CYAN}$RULES_DIR${RESET}"
+    echo "  - MCP directory:    ${CYAN}$MCP_DIR${RESET}"
     echo "  - Skills Config:    ${CYAN}$CONFIG_DIR/skills.json${RESET}"
     echo "  - Rules Config:     ${CYAN}$CONFIG_DIR/rules.json${RESET}"
+    echo "  - MCP Config:       ${CYAN}$CONFIG_DIR/mcp_config.json${RESET}"
     echo "  - Model Provider:   ${CYAN}gemini (in ~/.gemini/antigravity-cli/settings.json)${RESET}"
     echo "  - Environment file: ${CYAN}$AUTH_ZSH${RESET}"
 else
