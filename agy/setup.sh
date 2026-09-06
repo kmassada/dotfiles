@@ -173,6 +173,16 @@ if [ "$APPLY" = true ]; then
     else
         log_success "skills.json already contains: $SKILLS_DIR"
     fi
+
+    # Antigravity CLI native discovery locations (Global and Shared)
+    mkdir -p "$HOME/.gemini/antigravity-cli" "$HOME/.gemini/skills"
+    ln -sfn "$SKILLS_DIR" "$HOME/.gemini/antigravity-cli/skills"
+    for s in "$SKILLS_DIR"/*; do
+        if [ -d "$s" ]; then
+            ln -sfn "$s" "$HOME/.gemini/skills/$(basename "$s")"
+        fi
+    done
+    log_success "Linked skills into ~/.gemini/antigravity-cli/skills and ~/.gemini/skills"
 else
     if python3 "$PY_ENGINE" check-skills --skills-dir "$SKILLS_DIR" &>/dev/null; then
         log_success "skills.json is properly configured with: $SKILLS_DIR"
@@ -194,9 +204,11 @@ if [ "$APPLY" = true ]; then
         log_success "rules.json already contains: $RULES_DIR"
     fi
 
-    # Create link from ~/.gemini/config/rules to ~/.agents/rules for legacy discovery
+    # Create links for universal Antigravity / Jetski discovery
     ln -sfn "$RULES_DIR" "$CONFIG_DIR/rules"
-    log_success "Linked $CONFIG_DIR/rules -> $RULES_DIR"
+    ln -sfn "$RULES_DIR" "$HOME/.gemini/antigravity-cli/rules"
+    ln -sfn "$RULES_DIR" "$HOME/.gemini/rules"
+    log_success "Linked $RULES_DIR to ~/.gemini/config/rules, ~/.gemini/antigravity-cli/rules, and ~/.gemini/rules"
 else
     if python3 "$PY_ENGINE" check-rules --rules-dir "$RULES_DIR" &>/dev/null; then
         log_success "rules.json is properly configured with: $RULES_DIR"
