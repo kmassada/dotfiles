@@ -17,8 +17,8 @@ brew "eza"
 brew "fzf"
 # Replace zsh completion selection menu with fzf
 brew "fzf-tab"
-# Interact with Google Gemini AI models from the command-line
-brew "gemini-cli"
+# Platform built on V8 to build network applications
+brew "node"
 # GitHub command-line tool
 brew "gh"
 # Syntax-highlighting pager for git and diff output
