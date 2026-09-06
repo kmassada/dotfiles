@@ -75,15 +75,29 @@ brew "zsh-syntax-highlighting"
 brew "mas"
 # Desktop password and login vault
 cask "bitwarden"
+# Control your Elgato key lights
+cask "elgato-control-center"
+# Focusrite interface controller
+cask "focusrite-control"
 cask "font-hack-nerd-font"
 # Set of tools to manage resources and applications hosted on Google Cloud
 cask "gcloud-cli"
 # GPU-based terminal emulator
 cask "kitty"
+# Cable-free audio router
+cask "loopback"
 # Clipboard manager
 cask "maccy"
+# Knowledge base that works on top of a local folder of plain text Markdown files
+cask "obsidian"
+# Control your Sonos system
+cask "sonos"
+# Music streaming service
+cask "spotify"
 # Open-source code editor
 cask "visual-studio-code"
+# Multimedia player
+cask "vlc"
 # Open-source version of the X.Org X Window System
 cask "xquartz"
 vscode "davidanson.vscode-markdownlint"
@@ -129,3 +143,8 @@ mas "Pages", id: 409201541
 mas "PhotoSweeper", id: 463362050
 # Messaging client
 mas "WhatsApp", id: 310633997
+
+# --- iPadOS / iOS Apps on Apple Silicon (Mac App Store) ---
+# Note: mas-cli cannot install iPadOS apps via CLI; install via App Store -> "iPhone & iPad Apps"
+# mas "Ubiquiti WiFiman", id: 1385561119
+# mas "UniFi", id: 1057750338

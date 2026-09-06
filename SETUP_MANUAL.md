@@ -45,6 +45,10 @@ Follow this quick **3-minute checklist** on any newly provisioned Mac.
    brew bundle --file=~/src/dotfiles/Brewfile
    ```
    *(This ensures any Mac App Store apps like WhatsApp, Canva, etc. sync automatically).*
+4. **iPadOS Apps ("Designed for iPad"):**
+   Apple does not support CLI installation (`mas`) for iPadOS apps on Apple Silicon. Install these directly from the App Store GUI by searching and clicking the **"iPhone & iPad Apps"** tab:
+   - [WiFiman](https://apps.apple.com/app/id1385561119)
+   - [UniFi Network](https://apps.apple.com/app/id1057750338)
 
 ---
 
