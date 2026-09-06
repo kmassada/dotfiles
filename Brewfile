@@ -98,6 +98,8 @@ cask "loopback"
 cask "maccy"
 # Knowledge base that works on top of a local folder of plain text Markdown files
 cask "obsidian"
+# Team communication and messaging platform
+cask "slack"
 # Control your Sonos system
 cask "sonos"
 # Music streaming service
