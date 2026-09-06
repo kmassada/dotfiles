@@ -25,6 +25,8 @@ brew "gh"
 brew "git-delta"
 # Render markdown on the CLI
 brew "glow"
+# CLI for Drive, Gmail, Calendar, Sheets, Docs, Chat, Admin, and more
+brew "googleworkspace-cli"
 # Command-line pager for JSON data
 brew "jless"
 # Lightweight and flexible command-line JSON processor
