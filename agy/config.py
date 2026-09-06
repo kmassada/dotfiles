@@ -40,18 +40,18 @@ def save_json(file_path: Path, data: Dict[str, Any]) -> None:
 
 
 # ------------------------------------------------------------------------------
-# 1. Skills Configuration (~/.gemini/config/skills.json)
+# 1. Customization Entries (~/.gemini/config/skills.json & rules.json)
 # ------------------------------------------------------------------------------
 
-def check_skills(skills_json_path: Path, target_dir_str: str) -> Tuple[bool, str]:
+def check_entry(json_path: Path, target_dir_str: str) -> Tuple[bool, str]:
     """
-    Checks if target_dir is registered in skills.json entries.
+    Checks if target_dir is registered in JSON config entries (skills.json or rules.json).
     Returns (is_configured, status_message).
     """
-    if not skills_json_path.is_file():
+    if not json_path.is_file():
         return False, "MISSING"
 
-    data = load_json(skills_json_path)
+    data = load_json(json_path)
     entries = data.get("entries", [])
 
     target_abs = str(resolve_path(target_dir_str))
@@ -65,23 +65,39 @@ def check_skills(skills_json_path: Path, target_dir_str: str) -> Tuple[bool, str
     return False, "NEEDS_UPDATE"
 
 
-def apply_skills(skills_json_path: Path, target_dir_str: str) -> bool:
+def apply_entry(json_path: Path, target_dir_str: str) -> bool:
     """
-    Ensures target_dir is registered in skills.json entries.
+    Ensures target_dir is registered in JSON config entries.
     Returns True if an update was written, False if already present.
     """
-    is_configured, _ = check_skills(skills_json_path, target_dir_str)
+    is_configured, _ = check_entry(json_path, target_dir_str)
     if is_configured:
         return False
 
-    data = load_json(skills_json_path)
+    data = load_json(json_path)
     entries = data.setdefault("entries", [])
 
     target_norm = target_dir_str.replace(str(Path.home()), "~")
     entries.append({"path": target_norm})
 
-    save_json(skills_json_path, data)
+    save_json(json_path, data)
     return True
+
+
+def check_skills(skills_json_path: Path, target_dir_str: str) -> Tuple[bool, str]:
+    return check_entry(skills_json_path, target_dir_str)
+
+
+def apply_skills(skills_json_path: Path, target_dir_str: str) -> bool:
+    return apply_entry(skills_json_path, target_dir_str)
+
+
+def check_rules(rules_json_path: Path, target_dir_str: str) -> Tuple[bool, str]:
+    return check_entry(rules_json_path, target_dir_str)
+
+
+def apply_rules(rules_json_path: Path, target_dir_str: str) -> bool:
+    return apply_entry(rules_json_path, target_dir_str)
 
 
 # ------------------------------------------------------------------------------
@@ -137,11 +153,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     # Global flags
     parser.add_argument("--skills-dir", default="~/.agents/skills", help="Universal skills directory")
+    parser.add_argument("--rules-dir", default="~/.agents/rules", help="Universal rules directory")
     parser.add_argument("--model-provider", default="gemini", help="Target model provider name")
     parser.add_argument(
         "--skills-json",
         default="~/.gemini/config/skills.json",
         help="Path to global skills.json",
+    )
+    parser.add_argument(
+        "--rules-json",
+        default="~/.gemini/config/rules.json",
+        help="Path to global rules.json",
     )
     parser.add_argument(
         "--agy-settings",
@@ -162,6 +184,8 @@ def build_parser() -> argparse.ArgumentParser:
             "apply",
             "check-skills",
             "apply-skills",
+            "check-rules",
+            "apply-rules",
             "check-provider",
             "apply-provider",
             "get-provider",
@@ -176,6 +200,7 @@ def main() -> None:
     args = parser.parse_args()
 
     skills_json = resolve_path(args.skills_json)
+    rules_json = resolve_path(args.rules_json)
     agy_settings = resolve_path(args.agy_settings)
 
     action = args.action
@@ -195,6 +220,16 @@ def main() -> None:
         print("UPDATED" if updated else "ALREADY_CONFIGURED")
         sys.exit(0)
 
+    elif action == "check-rules":
+        ok, status = check_rules(rules_json, args.rules_dir)
+        print(status)
+        sys.exit(0 if ok else 1)
+
+    elif action == "apply-rules":
+        updated = apply_rules(rules_json, args.rules_dir)
+        print("UPDATED" if updated else "ALREADY_CONFIGURED")
+        sys.exit(0)
+
     elif action == "check-provider":
         ok, status = check_provider(agy_settings, args.model_provider)
         print(status)
@@ -211,35 +246,42 @@ def main() -> None:
 
     elif action == "apply":
         updated_skills = apply_skills(skills_json, args.skills_dir)
+        updated_rules = apply_rules(rules_json, args.rules_dir)
         updated_agy = apply_provider(agy_settings, args.model_provider)
 
         if args.format == "json":
             print(json.dumps({
                 "status": "applied",
                 "skills_json_updated": updated_skills,
+                "rules_json_updated": updated_rules,
                 "agy_settings_updated": updated_agy,
             }))
         else:
             skills_msg = "Updated" if updated_skills else "Already configured"
+            rules_msg = "Updated" if updated_rules else "Already configured"
             agy_msg = "Updated" if updated_agy else "Already configured"
             print(f"skills_json: {skills_msg}")
+            print(f"rules_json: {rules_msg}")
             print(f"antigravity_settings: {agy_msg}")
         sys.exit(0)
 
     elif action == "audit":
         skills_ok, skills_status = check_skills(skills_json, args.skills_dir)
+        rules_ok, rules_status = check_rules(rules_json, args.rules_dir)
         agy_ok, agy_status = check_provider(agy_settings, args.model_provider)
 
         if args.format == "json":
             print(json.dumps({
                 "skills_json": {"ok": skills_ok, "status": skills_status},
+                "rules_json": {"ok": rules_ok, "status": rules_status},
                 "antigravity_settings": {"ok": agy_ok, "status": agy_status},
             }))
         else:
             print(f"skills_json_status: {skills_status}")
+            print(f"rules_json_status: {rules_status}")
             print(f"antigravity_settings_status: {agy_status}")
 
-        sys.exit(0 if (skills_ok and agy_ok) else 1)
+        sys.exit(0 if (skills_ok and rules_ok and agy_ok) else 1)
 
 
 if __name__ == "__main__":
