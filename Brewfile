@@ -102,6 +102,8 @@ cask "spotify"
 cask "visual-studio-code"
 # Multimedia player
 cask "vlc"
+# Native desktop client for WhatsApp
+cask "whatsapp"
 # Open-source version of the X.Org X Window System
 cask "xquartz"
 vscode "davidanson.vscode-markdownlint"
@@ -137,16 +139,8 @@ mas "Ground News", id: 1324203419
 mas "Home Assistant", id: 1099568401
 # Video editing application
 mas "iMovie", id: 408981434
-# Presentation software
-mas "Keynote", id: 409183694
-# Spreadsheet application
-mas "Numbers", id: 409203825
-# Word processor
-mas "Pages", id: 409201541
 # Duplicate and similar photo finder
 mas "PhotoSweeper", id: 463362050
-# Messaging client
-mas "WhatsApp", id: 310633997
 
 # --- iPadOS / iOS Apps on Apple Silicon (Mac App Store) ---
 # Note: mas-cli cannot install iPadOS apps via CLI; install via App Store -> "iPhone & iPad Apps"
