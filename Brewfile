@@ -37,6 +37,8 @@ brew "kubectx"
 brew "lazygit"
 # Linux virtual machines
 brew "lima"
+# CLI for Node.js style checker and lint tool for Markdown files
+brew "markdownlint-cli"
 # Ambitious Vim-fork focused on extensibility and agility
 brew "neovim"
 # Tool for managing OCI containers and pods
