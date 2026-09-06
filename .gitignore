@@ -3,6 +3,7 @@ local/
 .config/gbackup
 .config/configstore
 .config/gcloud/
+.config/sharing-snips/
 __pycache__/
 *.pyc
 .DS_Store
