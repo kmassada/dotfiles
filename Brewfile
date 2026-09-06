@@ -11,6 +11,8 @@ brew "csvlens"
 brew "python@3.14"
 # CSV to Markdown table converter
 brew "csvtomd"
+# CLI for interacting with Doppler secrets and configuration
+brew "doppler"
 # Modern, maintained replacement for ls
 brew "eza"
 # Command-line fuzzy finder written in Go
