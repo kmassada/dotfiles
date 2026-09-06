@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadDescription</key>
+			<string>Configures automated Progressive Web App installations for Google Chrome</string>
+			<key>PayloadDisplayName</key>
+			<string>Google Chrome Web Applications</string>
+			<key>PayloadIdentifier</key>
+			<string>com.google.Chrome.policy.webapps</string>
+			<key>PayloadOrganization</key>
+			<string>Dotfiles</string>
+			<key>PayloadType</key>
+			<string>com.google.Chrome</string>
+			<key>PayloadUUID</key>
+			<string>8486ED8A-220D-47F8-9DA6-38D14D2DB1C0</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>WebAppInstallForceList</key>
+			<array>
+				<dict>
+					<key>url</key>
+					<string>https://mail.google.com</string>
+					<key>default_launch_container</key>
+					<string>window</string>
+					<key>create_desktop_shortcut</key>
+					<false/>
+				</dict>
+				<dict>
+					<key>url</key>
+					<string>https://keep.google.com</string>
+					<key>default_launch_container</key>
+					<string>window</string>
+					<key>create_desktop_shortcut</key>
+					<false/>
+				</dict>
+				<dict>
+					<key>url</key>
+					<string>https://notebooklm.google/</string>
+					<key>default_launch_container</key>
+					<string>window</string>
+					<key>create_desktop_shortcut</key>
+					<false/>
+					<key>custom_name</key>
+					<string>NotebookLM</string>
+				</dict>
+			</array>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Enforces web applications in Google Chrome</string>
+	<key>PayloadDisplayName</key>
+	<string>Google Chrome Web Applications</string>
+	<key>PayloadIdentifier</key>
+	<string>com.dotfiles.chrome.webapps</string>
+	<key>PayloadOrganization</key>
+	<string>Dotfiles</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadScope</key>
+	<string>User</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>69697E48-9668-4C40-97DE-F13F972EF92E</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

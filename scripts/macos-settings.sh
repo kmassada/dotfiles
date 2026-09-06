@@ -21,6 +21,7 @@ LOCAL_HOST="$(scutil --get ComputerName 2>/dev/null || hostname -s)"
 REMOTE_HOST=""
 APPLY=false
 VIEW_STYLE="Nlsv" # Nlsv = List, clmv = Column
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat << USAGE
@@ -117,14 +118,6 @@ format_val() {
         esac
         return
     fi
-    if [[ "$key" == "WebAppInstallForceList" ]]; then
-        if [[ "$val" != "<unset>" ]]; then
-            echo "Configured"
-        else
-            echo "default (unset)"
-        fi
-        return
-    fi
     if [[ "$key" == "60" || "$key" == "61" ]]; then
         case "$val" in
             disabled) echo "disabled (safe)" ;;
@@ -213,7 +206,6 @@ show_discovery() {
     check_item "Trackpad" "Tap to Click"             "true"        "com.apple.AppleMultitouchTrackpad" "Clicking"
     check_item "Trackpad" "Drag with Drag Lock"      "true"        "com.apple.AppleMultitouchTrackpad" "DragLock"
     check_item "Trackpad" "3-Finger Vertical Swipe"  "Mission/Exposé" "com.apple.AppleMultitouchTrackpad" "TrackpadThreeFingerVertSwipeGesture"
-    check_item "Chrome"   "Web Apps (Gmail, Keep, Notebook)" "Configured" "com.google.Chrome" "WebAppInstallForceList"
 
     echo ""
 }
@@ -359,12 +351,6 @@ apply_settings() {
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerVertSwipeGesture -int 2
     defaults write com.apple.AppleMultitouchTrackpad TrackpadFourFingerVertSwipeGesture -int 2
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadFourFingerVertSwipeGesture -int 2
-
-    echo "  → Chrome: Standardize Gmail, Google Keep, and Gemini Notebook web apps"
-    defaults write com.google.Chrome WebAppInstallForceList -array \
-        '<dict><key>url</key><string>https://mail.google.com/mail/?usp=installed_webapp</string><key>default_launch_container</key><string>window</string></dict>' \
-        '<dict><key>url</key><string>https://keep.google.com/?usp=installed_webapp</string><key>default_launch_container</key><string>window</string></dict>' \
-        '<dict><key>url</key><string>https://notebook.google.com/</string><key>default_launch_container</key><string>window</string></dict>'
 
     echo "${BOLD}Restarting Dock & Finder to activate changes...${RESET}"
     killall Dock 2>/dev/null || true

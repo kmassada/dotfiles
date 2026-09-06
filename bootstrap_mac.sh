@@ -32,6 +32,7 @@ NO_MAS=false
 NO_SSH=false
 NO_SSHD=false
 NO_SETTINGS=false
+NO_WEBAPPS=false
 NO_AGY=false
 NO_PULL=false
 
@@ -44,6 +45,7 @@ Options:
   --no-casks     Skip GUI applications in Brewfile
   --no-mas       Skip Mac App Store applications in Brewfile
   --no-settings  Skip configuring macOS preferences (Dock, Finder, Ergonomics)
+  --no-webapps   Skip Progressive Web Apps setup (automatically skipped on *.internal)
   --no-agy       Skip Antigravity skills, rules, and model provider setup
   --no-ssh       Skip SSH client key setup for GitHub
   --no-sshd      Skip enabling Remote Login (SSH server)
@@ -65,6 +67,7 @@ while [[ $# -gt 0 ]]; do
         --no-casks)    NO_CASKS=true; shift ;;
         --no-mas)      NO_MAS=true; shift ;;
         --no-settings) NO_SETTINGS=true; shift ;;
+        --no-webapps)  NO_WEBAPPS=true; shift ;;
         --no-agy)      NO_AGY=true; shift ;;
         --no-ssh)      NO_SSH=true; shift ;;
         --no-sshd)     NO_SSHD=true; shift ;;
@@ -245,7 +248,26 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 10. Antigravity & AI Agent Environment (Skills & Rules)
+# 10. Web Applications (PWAs for Personal Mac)
+# ------------------------------------------------------------------------------
+if [ "$NO_WEBAPPS" = false ] && [ "$CLI_ONLY" = false ]; then
+    FULL_HOST="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo "")"
+    SCUTIL_HOST="$(scutil --get HostName 2>/dev/null || echo "")"
+    if [[ "$FULL_HOST" == *".internal"* || "$SCUTIL_HOST" == *".internal"* ]]; then
+        log_info "Skipping web apps setup on corporate/internal host (${FULL_HOST:-$SCUTIL_HOST})."
+    else
+        WEBAPPS_SCRIPT="$DOTFILES_DIR/scripts/install-webapps.sh"
+        if [[ -x "$WEBAPPS_SCRIPT" ]]; then
+            log_info "Configuring web applications for personal Mac..."
+            "$WEBAPPS_SCRIPT" --apply
+        fi
+    fi
+else
+    log_info "Skipping web applications (--no-webapps or --cli-only)."
+fi
+
+# ------------------------------------------------------------------------------
+# 11. Antigravity & AI Agent Environment (Skills & Rules)
 # ------------------------------------------------------------------------------
 if [ "$NO_AGY" = false ]; then
     AGY_SCRIPT="$DOTFILES_DIR/agy/setup.sh"
@@ -260,7 +282,7 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 11. Finished
+# 12. Finished
 # ------------------------------------------------------------------------------
 echo ""
 log_success "macOS bootstrap complete!"
