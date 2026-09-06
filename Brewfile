@@ -77,6 +77,8 @@ brew "zsh-completions"
 brew "zsh-syntax-highlighting"
 # Mac App Store command-line interface
 brew "mas"
+# Collection of apps and services for photography, design, video, web, and UX
+cask "adobe-creative-cloud"
 # Desktop password and login vault
 cask "bitwarden"
 # Control your Elgato key lights
@@ -124,6 +126,7 @@ vscode "ms-toolsai.jupyter-keymap"
 vscode "ms-toolsai.jupyter-renderers"
 vscode "ms-toolsai.vscode-jupyter-cell-tags"
 vscode "ms-toolsai.vscode-jupyter-slideshow"
+vscode "ms-vscode-remote.remote-containers"
 vscode "redhat.vscode-yaml"
 vscode "tim-koehler.helm-intellisense"
 # Visual design platform
