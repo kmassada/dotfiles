@@ -77,6 +77,30 @@ format_val() {
         esac
         return
     fi
+    if [[ "$key" == "KeyRepeat" ]]; then
+        case "$val" in
+            1) echo "1 (fastest)" ;;
+            "<unset>") echo "default (6)" ;;
+            *) echo "$val" ;;
+        esac
+        return
+    fi
+    if [[ "$key" == "InitialKeyRepeat" ]]; then
+        case "$val" in
+            10) echo "10 (shortest)" ;;
+            "<unset>") echo "default (25)" ;;
+            *) echo "$val" ;;
+        esac
+        return
+    fi
+    if [[ "$key" == "TrackpadThreeFingerVertSwipeGesture" ]]; then
+        case "$val" in
+            2) echo "Mission/Exposé" ;;
+            "<unset>") echo "default" ;;
+            *) echo "$val" ;;
+        esac
+        return
+    fi
     case "$val" in
         1|true)  echo "true" ;;
         0|false) echo "false" ;;
@@ -100,11 +124,11 @@ show_discovery() {
     echo ""
 
     if [[ -n "$REMOTE_HOST" ]]; then
-        printf "%-8s %-32s %-16s %-18s %-18s\n" "AREA" "SETTING" "DESIRED" "LOCAL ($LOCAL_HOST)" "REMOTE"
-        echo "--------------------------------------------------------------------------------------------------"
+        printf "%-10s %-32s %-16s %-18s %-18s\n" "AREA" "SETTING" "DESIRED" "LOCAL ($LOCAL_HOST)" "REMOTE"
+        echo "----------------------------------------------------------------------------------------------------"
     else
-        printf "%-8s %-32s %-16s %-20s\n" "AREA" "SETTING" "DESIRED" "CURRENT STATUS"
-        echo "--------------------------------------------------------------------------------"
+        printf "%-10s %-32s %-16s %-20s\n" "AREA" "SETTING" "DESIRED" "CURRENT STATUS"
+        echo "----------------------------------------------------------------------------------"
     fi
 
     check_item() {
@@ -115,34 +139,45 @@ show_discovery() {
         if [[ -n "$REMOTE_HOST" ]]; then
             local raw_r="$(read_remote "$REMOTE_HOST" "$domain" "$key")"
             local val_r="$(format_val "$raw_r" "$key")"
-            printf "%-8s %-32s %-16s %-18s %-18s\n" "$area" "$label" "$desired" "$val_l" "$val_r"
+            printf "%-10s %-32s %-16s %-18s %-18s\n" "$area" "$label" "$desired" "$val_l" "$val_r"
         else
-            printf "%-8s %-32s %-16s %-20s\n" "$area" "$label" "$desired" "$val_l"
+            printf "%-10s %-32s %-16s %-20s\n" "$area" "$label" "$desired" "$val_l"
         fi
     }
 
-    check_item "Dock"   "Auto-hide Dock"           "true"        "com.apple.dock"   "autohide"
-    check_item "Dock"   "Auto-hide Delay"          "0 (instant)" "com.apple.dock"   "autohide-delay"
-    check_item "Dock"   "Animation Duration"       "0.15s"       "com.apple.dock"   "autohide-time-modifier"
-    check_item "Dock"   "Minimize to App Icon"     "true"        "com.apple.dock"   "minimize-to-application"
-    check_item "Dock"   "Show Recent Apps"         "false"       "com.apple.dock"   "show-recents"
-    check_item "Dock"   "Dock Magnification"       "false"       "com.apple.dock"   "magnification"
-    check_item "Dock"   "Dock Position"            "bottom"      "com.apple.dock"   "orientation"
-    check_item "Dock"   "Minimize Effect"          "scale"       "com.apple.dock"   "mineffect"
-    check_item "Finder" "Show Hidden Files"        "true"        "com.apple.finder" "AppleShowAllFiles"
-    check_item "Finder" "Show All Extensions"      "true"        "NSGlobalDomain"   "AppleShowAllExtensions"
-    check_item "Finder" "Default View Style"       "$(format_val "$VIEW_STYLE")" "com.apple.finder" "FXPreferredViewStyle"
-    check_item "Finder" "Show Full Path in Title"  "true"        "com.apple.finder" "_FXShowPosixPathInTitle"
-    check_item "Finder" "Show Path Bar"            "true"        "com.apple.finder" "ShowPathbar"
-    check_item "Finder" "Show Status Bar"          "true"        "com.apple.finder" "ShowStatusBar"
-    check_item "Finder" "Search Scope Default"     "Current Folder" "com.apple.finder" "FXDefaultSearchScope"
-    check_item "Finder" "New Window Target"        "Home (~)"    "com.apple.finder" "NewWindowTarget"
-    check_item "Finder" "Show Preview Pane"        "true"        "com.apple.finder" "ShowPreviewPane"
-    check_item "Finder" "Extension Change Warning" "false"       "com.apple.finder" "FXEnableExtensionChangeWarning"
-    check_item "Finder"  "Show Drives on Desktop"   "false"       "com.apple.finder" "ShowHardDrivesOnDesktop"
-    check_item "Finder"  "Show Recent Tags"         "false"       "com.apple.finder" "ShowRecentTags"
-    check_item "Desktop" "Disable Screenshot Shadow" "true"       "com.apple.screencapture" "disable-shadow"
-    check_item "Desktop" "Wallpaper Click to Reveal" "false"      "com.apple.WindowManager" "EnableStandardClickToShowDesktop"
+    check_item "Dock"     "Auto-hide Dock"           "true"        "com.apple.dock"   "autohide"
+    check_item "Dock"     "Auto-hide Delay"          "0 (instant)" "com.apple.dock"   "autohide-delay"
+    check_item "Dock"     "Animation Duration"       "0.15s"       "com.apple.dock"   "autohide-time-modifier"
+    check_item "Dock"     "Minimize to App Icon"     "true"        "com.apple.dock"   "minimize-to-application"
+    check_item "Dock"     "Show Recent Apps"         "false"       "com.apple.dock"   "show-recents"
+    check_item "Dock"     "Dock Magnification"       "false"       "com.apple.dock"   "magnification"
+    check_item "Dock"     "Dock Position"            "bottom"      "com.apple.dock"   "orientation"
+    check_item "Dock"     "Minimize Effect"          "scale"       "com.apple.dock"   "mineffect"
+    check_item "Finder"   "Show Hidden Files"        "true"        "com.apple.finder" "AppleShowAllFiles"
+    check_item "Finder"   "Show All Extensions"      "true"        "NSGlobalDomain"   "AppleShowAllExtensions"
+    check_item "Finder"   "Default View Style"       "$(format_val "$VIEW_STYLE")" "com.apple.finder" "FXPreferredViewStyle"
+    check_item "Finder"   "Show Full Path in Title"  "true"        "com.apple.finder" "_FXShowPosixPathInTitle"
+    check_item "Finder"   "Show Path Bar"            "true"        "com.apple.finder" "ShowPathbar"
+    check_item "Finder"   "Show Status Bar"          "true"        "com.apple.finder" "ShowStatusBar"
+    check_item "Finder"   "Search Scope Default"     "Current Folder" "com.apple.finder" "FXDefaultSearchScope"
+    check_item "Finder"   "New Window Target"        "Home (~)"    "com.apple.finder" "NewWindowTarget"
+    check_item "Finder"   "Show Preview Pane"        "true"        "com.apple.finder" "ShowPreviewPane"
+    check_item "Finder"   "Extension Change Warning" "false"       "com.apple.finder" "FXEnableExtensionChangeWarning"
+    check_item "Finder"   "Show Drives on Desktop"   "false"       "com.apple.finder" "ShowHardDrivesOnDesktop"
+    check_item "Finder"   "Show Recent Tags"         "false"       "com.apple.finder" "ShowRecentTags"
+    check_item "Desktop"  "Disable Screenshot Shadow" "true"       "com.apple.screencapture" "disable-shadow"
+    check_item "Desktop"  "Wallpaper Click to Reveal" "false"      "com.apple.WindowManager" "EnableStandardClickToShowDesktop"
+    check_item "Windows"  "Stage Manager Enabled"    "true"        "com.apple.WindowManager" "GloballyEnabled"
+    check_item "Windows"  "Tiled Window Margins"     "false"       "com.apple.WindowManager" "EnableTiledWindowMargins"
+    check_item "Windows"  "Group Windows in Exposé"  "true"        "com.apple.dock"          "expose-group-apps"
+    check_item "Windows"  "Don't Rearrange Spaces"   "false"       "com.apple.dock"          "mru-spaces"
+    check_item "Sound"    "Volume Feedback Beep"     "false"       "NSGlobalDomain"          "com.apple.sound.beep.feedback"
+    check_item "Sound"    "UI Sound Effects"         "false"       "com.apple.systemsound"   "com.apple.sound.uiaudio.enabled"
+    check_item "Keyboard" "Key Repeat Rate"          "1 (fastest)" "NSGlobalDomain"          "KeyRepeat"
+    check_item "Keyboard" "Delay Until Repeat"       "10 (short)"  "NSGlobalDomain"          "InitialKeyRepeat"
+    check_item "Trackpad" "Tap to Click"             "true"        "com.apple.AppleMultitouchTrackpad" "Clicking"
+    check_item "Trackpad" "Drag with Drag Lock"      "true"        "com.apple.AppleMultitouchTrackpad" "DragLock"
+    check_item "Trackpad" "3-Finger Vertical Swipe"  "Mission/Exposé" "com.apple.AppleMultitouchTrackpad" "TrackpadThreeFingerVertSwipeGesture"
 
     echo ""
 }
@@ -237,9 +272,58 @@ apply_settings() {
     defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
     defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 
+    # --- Stage Manager & Window Management ---
+    echo "  → Windows: Enable Stage Manager"
+    defaults write com.apple.WindowManager GloballyEnabled -bool true
+
+    echo "  → Windows: Remove tiled window margins (no gaps)"
+    defaults write com.apple.WindowManager EnableTiledWindowMargins -bool false
+
+    echo "  → Windows: Group windows by application in Mission Control"
+    defaults write com.apple.dock expose-group-apps -bool true
+
+    echo "  → Windows: Don't automatically rearrange Spaces based on recent use"
+    defaults write com.apple.dock mru-spaces -bool false
+
+    # --- Sound & Interface Feedback ---
+    echo "  → Sound: Mute volume adjustment feedback click"
+    defaults write NSGlobalDomain "com.apple.sound.beep.feedback" -int 0
+
+    echo "  → Sound: Disable UI sound effects"
+    defaults write com.apple.systemsound "com.apple.sound.uiaudio.enabled" -int 0
+
+    # --- Keyboard Ergonomics ---
+    echo "  → Keyboard: Set key repeat rate to fast (1)"
+    defaults write NSGlobalDomain KeyRepeat -int 1
+
+    echo "  → Keyboard: Set initial key repeat delay to short (10)"
+    defaults write NSGlobalDomain InitialKeyRepeat -int 10
+
+    # --- Trackpad & Gestures ---
+    echo "  → Trackpad: Enable Tap to Click"
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+    defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+    defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+    defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
+    echo "  → Trackpad: Enable Dragging with Drag Lock"
+    defaults write com.apple.AppleMultitouchTrackpad DragLock -bool true
+    defaults write com.apple.AppleMultitouchTrackpad Dragging -bool true
+    defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag -bool false
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad DragLock -bool true
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Dragging -bool true
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -bool false
+
+    echo "  → Trackpad: Set 3-finger vertical swipe (up for Mission Control, down for Exposé)"
+    defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerVertSwipeGesture -int 2
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerVertSwipeGesture -int 2
+    defaults write com.apple.AppleMultitouchTrackpad TrackpadFourFingerVertSwipeGesture -int 2
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadFourFingerVertSwipeGesture -int 2
+
     echo "${BOLD}Restarting Dock & Finder to activate changes...${RESET}"
     killall Dock 2>/dev/null || true
     killall Finder 2>/dev/null || true
+    killall SystemUIServer 2>/dev/null || true
 
     echo "${BOLD}${GREEN}✅ macOS preferences applied successfully!${RESET}"
 }
