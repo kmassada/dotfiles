@@ -57,6 +57,8 @@ brew "telnet"
 brew "tmux"
 # Plugin manager for tmux
 brew "tpm"
+# Extremely fast Python package and project manager
+brew "uv"
 # Executes a program periodically, showing output fullscreen
 brew "watch"
 # Internet file retriever
