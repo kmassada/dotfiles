@@ -119,6 +119,16 @@ stow --adopt -t ~ .
 > your terminal or source `~/.zshrc` for all changes to take effect. If prompted
 > by Powerlevel10k on first run, configure it using `p10k configure`.
 
+### Step 4: Apply macOS Preferences & Manual Polish
+
+Apply codified Dock and Finder preferences (no magnification, bottom position, scale effect, hidden files, extensions):
+
+```bash
+./scripts/macos-settings.sh --apply
+```
+
+For Apple-protected settings (Finder Sidebar sections/ordering, Apple ID, Touch ID `sudo`), complete the 3-minute checklist in **[`SETUP_MANUAL.md`](SETUP_MANUAL.md)**.
+
 ## 🏗️ Architecture & Configuration
 
 ### 1. 🔍 Search and Navigation (`fzf` + `ripgrep`)
