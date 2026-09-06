@@ -131,8 +131,10 @@ show_discovery() {
     check_item "Finder" "New Window Target"        "Home (~)"    "com.apple.finder" "NewWindowTarget"
     check_item "Finder" "Show Preview Pane"        "true"        "com.apple.finder" "ShowPreviewPane"
     check_item "Finder" "Extension Change Warning" "false"       "com.apple.finder" "FXEnableExtensionChangeWarning"
-    check_item "Finder" "Show Drives on Desktop"   "false"       "com.apple.finder" "ShowHardDrivesOnDesktop"
-    check_item "Finder" "Show Recent Tags"         "false"       "com.apple.finder" "ShowRecentTags"
+    check_item "Finder"  "Show Drives on Desktop"   "false"       "com.apple.finder" "ShowHardDrivesOnDesktop"
+    check_item "Finder"  "Show Recent Tags"         "false"       "com.apple.finder" "ShowRecentTags"
+    check_item "Desktop" "Disable Screenshot Shadow" "true"       "com.apple.screencapture" "disable-shadow"
+    check_item "Desktop" "Wallpaper Click to Reveal" "false"      "com.apple.WindowManager" "EnableStandardClickToShowDesktop"
 
     echo ""
 }
@@ -208,6 +210,19 @@ apply_settings() {
     echo "  → Finder: Hide recent tags and clear tag clutter"
     defaults write com.apple.finder ShowRecentTags -bool false
     defaults write com.apple.finder FavoriteTagNames -array ""
+
+    # --- Desktop & Screenshots ---
+    echo "  → Desktop: Ensure Stacks grouped by Kind"
+    defaults write com.apple.finder DesktopViewSettings -dict-add GroupBy -string "Kind"
+
+    echo "  → Screenshots: Disable window drop shadows (clean borders)"
+    defaults write com.apple.screencapture disable-shadow -bool true
+
+    echo "  → Screenshots: Keep location on Desktop"
+    defaults write com.apple.screencapture location -string "${HOME}/Desktop"
+
+    echo "  → Desktop: Disable clicking wallpaper to reveal desktop"
+    defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool false
 
     # --- Desktop Services Clutter ---
     echo "  → System: Prevent .DS_Store creation on network & USB volumes"
