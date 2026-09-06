@@ -68,7 +68,15 @@ read_remote() {
 }
 
 format_val() {
-    local val="$1"
+    local val="$1" key="$2"
+    if [[ "$key" == "autohide-delay" ]]; then
+        case "$val" in
+            0) echo "0s (instant)" ;;
+            "<unset>") echo "default" ;;
+            *) echo "${val}s" ;;
+        esac
+        return
+    fi
     case "$val" in
         1|true)  echo "true" ;;
         0|false) echo "false" ;;
@@ -102,11 +110,11 @@ show_discovery() {
     check_item() {
         local area="$1" label="$2" desired="$3" domain="$4" key="$5"
         local raw_l="$(read_local "$domain" "$key")"
-        local val_l="$(format_val "$raw_l")"
+        local val_l="$(format_val "$raw_l" "$key")"
 
         if [[ -n "$REMOTE_HOST" ]]; then
             local raw_r="$(read_remote "$REMOTE_HOST" "$domain" "$key")"
-            local val_r="$(format_val "$raw_r")"
+            local val_r="$(format_val "$raw_r" "$key")"
             printf "%-8s %-32s %-16s %-18s %-18s\n" "$area" "$label" "$desired" "$val_l" "$val_r"
         else
             printf "%-8s %-32s %-16s %-20s\n" "$area" "$label" "$desired" "$val_l"
