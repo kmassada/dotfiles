@@ -3,3 +3,5 @@ local/
 .config/gbackup
 .config/configstore
 .config/gcloud/
+__pycache__/
+*.pyc
