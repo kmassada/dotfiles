@@ -6,4 +6,5 @@
 ^LICENSE$
 ^\.git.*
 ^scripts$
+^agy$
 ^\.stow-local-ignore$
