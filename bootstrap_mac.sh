@@ -32,6 +32,7 @@ NO_MAS=false
 NO_SSH=false
 NO_SSHD=false
 NO_SETTINGS=false
+NO_AGY=false
 NO_PULL=false
 
 usage() {
@@ -43,13 +44,14 @@ Options:
   --no-casks     Skip GUI applications in Brewfile
   --no-mas       Skip Mac App Store applications in Brewfile
   --no-settings  Skip configuring macOS preferences (Dock, Finder, Ergonomics)
+  --no-agy       Skip Antigravity skills, rules, and model provider setup
   --no-ssh       Skip SSH client key setup for GitHub
   --no-sshd      Skip enabling Remote Login (SSH server)
   --no-pull      Skip git pull if dotfiles repo already exists
   -h, --help     Show this help message
 
 Examples:
-  $0                     # Full installation (CLI, GUI apps, Mac App Store, dotfiles, SSH, OS settings)
+  $0                     # Full installation (CLI, GUI apps, Mac App Store, dotfiles, SSH, OS settings, Agy)
   $0 --cli-only          # Lightweight/headless setup (only CLI tools & dotfiles)
   $0 --no-mas            # Install CLI & Casks, but skip Mac App Store apps
 USAGE
@@ -63,6 +65,7 @@ while [[ $# -gt 0 ]]; do
         --no-casks)    NO_CASKS=true; shift ;;
         --no-mas)      NO_MAS=true; shift ;;
         --no-settings) NO_SETTINGS=true; shift ;;
+        --no-agy)      NO_AGY=true; shift ;;
         --no-ssh)      NO_SSH=true; shift ;;
         --no-sshd)     NO_SSHD=true; shift ;;
         --no-pull)     NO_PULL=true; shift ;;
@@ -242,7 +245,22 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 10. Finished
+# 10. Antigravity & AI Agent Environment (Skills & Rules)
+# ------------------------------------------------------------------------------
+if [ "$NO_AGY" = false ]; then
+    AGY_SCRIPT="$DOTFILES_DIR/agy/setup.sh"
+    if [[ -x "$AGY_SCRIPT" ]]; then
+        log_info "Configuring Antigravity agent skills, rules, and model provider..."
+        "$AGY_SCRIPT" --apply
+    else
+        log_warn "Antigravity setup script not found or not executable at $AGY_SCRIPT"
+    fi
+else
+    log_info "Skipping Antigravity environment setup (--no-agy)."
+fi
+
+# ------------------------------------------------------------------------------
+# 11. Finished
 # ------------------------------------------------------------------------------
 echo ""
 log_success "macOS bootstrap complete!"

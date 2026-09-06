@@ -94,6 +94,7 @@ chmod +x bootstrap_mac.sh
 ./bootstrap_mac.sh --no-mas       # Install CLI and GUI casks, but skip Mac App Store apps
 ./bootstrap_mac.sh --no-casks     # Install CLI and Mac App Store apps, skip GUI casks
 ./bootstrap_mac.sh --no-settings  # Skip configuring macOS preferences (Dock, Finder, Ergonomics)
+./bootstrap_mac.sh --no-agy       # Skip Antigravity skills, rules, and model provider setup
 ./bootstrap_mac.sh --no-ssh       # Skip SSH client key setup
 ./bootstrap_mac.sh --no-sshd      # Skip enabling Remote Login (SSH server)
 ```
