@@ -292,11 +292,12 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 7. Shell & GUI Environment Variables (~/.local/gemini_auth.zsh)
+# 7. Shell & GUI Environment Variables (GEMINI_API_KEY, SLACK credentials)
 # ------------------------------------------------------------------------------
-log_info "7. Checking environment variables (GEMINI_API_KEY)..."
+log_info "7. Checking environment variables (GEMINI_API_KEY, SLACK credentials)..."
 
 AUTH_ZSH="$LOCAL_DIR/gemini_auth.zsh"
+SLACK_ZSH="$LOCAL_DIR/slack_auth.zsh"
 
 if [ "$APPLY" = true ]; then
     if [ -n "$API_KEY" ]; then
@@ -314,12 +315,28 @@ if [ "$APPLY" = true ]; then
             launchctl setenv GEMINI_API_KEY "$GEMINI_API_KEY"
             log_success "Updated macOS launchctl GEMINI_API_KEY"
         fi
+
+        if [ -f "$SLACK_ZSH" ]; then
+            # shellcheck disable=SC1090
+            source "$SLACK_ZSH"
+            if [ -n "${SLACK_BOT_TOKEN:-}" ]; then
+                launchctl setenv SLACK_BOT_TOKEN "$SLACK_BOT_TOKEN"
+                launchctl setenv SLACK_TEAM_ID "${SLACK_TEAM_ID:-}"
+                log_success "Updated macOS launchctl Slack credentials"
+            fi
+        fi
     fi
 else
     if [ -n "${GEMINI_API_KEY:-}" ] || ([ -f "$AUTH_ZSH" ] && grep -q "GEMINI_API_KEY" "$AUTH_ZSH"); then
         log_success "GEMINI_API_KEY is configured"
     else
         log_warn "GEMINI_API_KEY is not currently set (Provide with: $0 --apply --key <YOUR_KEY>)"
+    fi
+
+    if [ -n "${SLACK_BOT_TOKEN:-}" ] || ([ -f "$SLACK_ZSH" ] && grep -q "SLACK_BOT_TOKEN" "$SLACK_ZSH"); then
+        log_success "Slack MCP credentials are configured ($SLACK_ZSH)"
+    else
+        log_warn "Slack credentials not configured (Run: scripts/setup-slack.sh --apply to configure)"
     fi
 fi
 

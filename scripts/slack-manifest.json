@@ -1,0 +1,43 @@
+{
+  "_metadata": {
+    "major_version": 1,
+    "minor_version": 1
+  },
+  "display_information": {
+    "name": "AI Assistant",
+    "description": "AI Agent Slack Integration via MCP",
+    "background_color": "#1a73e8"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Assistant",
+      "always_online": true
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "channels:history",
+        "channels:read",
+        "groups:history",
+        "groups:read",
+        "im:history",
+        "im:read",
+        "mpim:history",
+        "mpim:read",
+        "chat:write",
+        "chat:write.public",
+        "reactions:read",
+        "reactions:write",
+        "users:read",
+        "users.profile:read",
+        "team:read"
+      ]
+    }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
