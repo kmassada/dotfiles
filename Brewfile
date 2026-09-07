@@ -91,6 +91,10 @@ cask "antigravity-cli"
 cask "antigravity-ide"
 # Desktop password and login vault
 cask "bitwarden"
+# Anthropic's official Claude AI desktop app
+cask "claude"
+# Terminal-based AI coding assistant
+cask "claude-code"
 # Control your Elgato key lights
 cask "elgato-control-center"
 # Focusrite interface controller
