@@ -1,48 +1,88 @@
-# Antigravity (AGY) & Gemini Setup Engine
+# Declarative AI Agent Setup Engine
 
-Provisioning engine and configuration system for Google Antigravity (AGY),
-Gemini CLI, and AI agent environments.
+Provisioning engine and declarative configuration system for AI coding agents,
+including Google Antigravity (AGY), Gemini CLI, and Claude Code.
 
-This directory manages universal agent skills, rules, Model Context Protocol
-(MCP) servers, model provider configurations, and authentication credentials
-across macOS and Linux hosts.
+This directory orchestrates universal agent skills, conditional rules, Model
+Context Protocol (MCP) servers, model provider configurations, and
+authentication credentials using a declarative, config-driven architecture.
 
 ---
 
-## Architecture & Layers
+## Declarative Architecture (`targets.json`)
 
-The setup engine orchestrates seven distinct configuration layers:
+All source locations and agent-specific discovery requirements are declared in
+[`targets.json`](file:///Users/kmassada/src/dotfiles/agy/targets.json):
 
-1. **Directory Structure**: Verifies and provisions base paths in
-   `~/.gemini/config`, `~/.agents/skills`, `~/.agents/rules`, `~/.agents/mcp`,
-   and `~/.local`.
-2. **Skills, Rules, and MCP Synchronization**: Syncs standalone agent packages
-   from the upstream [`agent-skills`](https://github.com/kmassada/agent-skills)
-   repository into `~/.agents/`.
-3. **Global Skills Discovery**: Configures `~/.gemini/config/skills.json` and
-   symlinks skills into Antigravity discovery paths.
-4. **Global Rules Discovery**: Configures `~/.gemini/config/rules.json` and
-   links conditional and system rules.
-5. **Universal MCP Configuration**: Merges Model Context Protocol definitions
-   into `~/.gemini/config/mcp_config.json` and links to
-   `~/.gemini/antigravity-cli/mcp_config.json`.
-6. **Model Provider**: Sets `modelProvider = "gemini"` in
-   `~/.gemini/antigravity-cli/settings.json`.
-7. **Environment & Secrets**: Safely writes credentials (`GEMINI_API_KEY`,
-   `SLACK_BOT_TOKEN`, `SLACK_TEAM_ID`) to `~/.local/*.zsh` (mode `0600`) and
-   syncs them to macOS `launchctl` for GUI applications.
+```json
+{
+  "sources": {
+    "skills_dir": "~/.agents/skills",
+    "rules_dir": "~/.agents/rules",
+    "mcp_file": "~/.agents/mcp/mcp_config.json"
+  },
+  "targets": {
+    "antigravity": {
+      "name": "Google Antigravity & Gemini CLI",
+      "mcp": {
+        "target_file": "~/.gemini/config/mcp_config.json",
+        "symlink_to": "~/.gemini/antigravity-cli/mcp_config.json"
+      },
+      "json_entries": [
+        {
+          "target_file": "~/.gemini/config/skills.json",
+          "source": "skills_dir"
+        },
+        {
+          "target_file": "~/.gemini/config/rules.json",
+          "source": "rules_dir"
+        }
+      ],
+      "settings": {
+        "target_file": "~/.gemini/antigravity-cli/settings.json",
+        "key": "modelProvider",
+        "value": "gemini"
+      }
+    },
+    "claude": {
+      "name": "Claude Code",
+      "skills_dir": "~/.claude/skills",
+      "mcp": {
+        "target_file": "~/.claude.json"
+      }
+    }
+  }
+}
+```
+
+### Generic Primitives
+
+The Python engine [`config.py`](file:///Users/kmassada/src/dotfiles/agy/config.py)
+implements generic, stateless primitives:
+
+1. **`check_mcp` / `apply_mcp`**: Merges `mcpServers` objects into target JSON
+   files without clobbering unrelated top-level keys.
+2. **`check_skill_symlinks` / `apply_skill_symlinks`**: Scans upstream skill
+   packages (directories with `SKILL.md`) and symlinks them into target tool
+   directories without overwriting non-symlink user directories.
+3. **`check_json_entry` / `apply_json_entry`**: Idempotently registers paths
+   into JSON registry files (`skills.json`, `rules.json`).
+4. **`check_json_key` / `apply_json_key`**: Sets or verifies top-level key-value
+   pairs (`settings.json`).
+5. **`check_symlink` / `apply_symlink`**: Ensures file or directory symlinks.
 
 ---
 
 ## File Structure
 
-* **`setup.sh`**: The primary shell driver. Supports audit mode (read-only
-  inspection) and apply mode (idempotent configuration).
-* **`config.py`**: The underlying Python engine. Handles JSON schema
-  validation, safe entry deduplication, dictionary merging, and provider
-  configuration. Fully typed with `collections.abc` and compliant with PEP 723.
-* **`test_config.py`**: Hermetic companion unit test suite using standard
-  library `unittest` and `tempfile.TemporaryDirectory`.
+* **`targets.json`**: Declarative mapping of upstream sources and downstream
+  agent targets.
+* **`config.py`**: Lean, zero-dependency Python engine. Complies with PEP 723
+  and uses abstract typing from `collections.abc`.
+* **`test_config.py`**: Hermetic unit test suite verifying each primitive and
+  the end-to-end engine against an isolated temporary directory.
+* **`setup.sh`**: Top-level shell script wrapping directory creation, upstream
+  git synchronization, agent configuration, and environment credentials.
 
 ---
 
@@ -50,11 +90,24 @@ The setup engine orchestrates seven distinct configuration layers:
 
 ### Audit Configuration
 
-Run the shell script without flags to perform a read-only health check across
-all seven layers:
+Run the shell script without flags to check overall system health:
 
 ```bash
 ./agy/setup.sh
+```
+
+Or run the Python engine directly to audit all targets or an individual agent:
+
+```bash
+python3 agy/config.py audit
+python3 agy/config.py audit --target claude
+python3 agy/config.py audit --target antigravity
+```
+
+Structured JSON output is also supported:
+
+```bash
+python3 agy/config.py audit --format json
 ```
 
 ### Apply Configuration
@@ -65,45 +118,68 @@ Apply missing directories, sync upstream skills, and configure discovery:
 ./agy/setup.sh --apply
 ```
 
-### Set Gemini API Key
+Or apply target configurations individually:
 
-Configure the environment and save the API key to `~/.local/gemini_auth.zsh`
-while propagating to macOS `launchctl`:
+```bash
+python3 agy/config.py apply --target claude
+```
+
+### Configure Credentials
+
+Set your Gemini API key in `~/.local/gemini_auth.zsh` and export to macOS
+`launchctl`:
 
 ```bash
 ./agy/setup.sh --apply --key "AIzaSy..."
 ```
 
+For Slack MCP credentials, use the dedicated Slack bootstrapper:
+
+```bash
+./scripts/setup-slack.sh --apply
+```
+
+---
+
+## Adding New Agents (e.g. Cursor or Windsurf)
+
+Because the architecture is config-driven, supporting a new agent does **not**
+require editing Python code or creating new files. Simply add a new target block
+to `targets.json`:
+
+```json
+"cursor": {
+  "name": "Cursor",
+  "mcp": {
+    "target_file": "~/.cursor/mcp.json"
+  }
+}
+```
+
+Running `python3 agy/config.py audit` or `apply` will automatically discover and
+configure the new target.
+
 ---
 
 ## Development & Verification
 
-All Python code in this directory follows strict quality and typing standards:
+All Python code adheres to strict quality and typing standards:
 
-* **Unit Testing**: Run the companion test suite:
+* **Unit Testing**: Run hermetic unit tests with standard library `unittest`:
 
   ```bash
   python3 -m unittest discover -s agy
   ```
 
-* **Static Type Checking**: Verify zero errors with Pyright:
+* **Static Type Checking**: Verify static types with Pyright:
 
   ```bash
   uvx pyright agy/
   ```
 
-* **Linting & Formatting**: Verify compliance with PEP 8 and Ruff:
+* **Formatting & Linting**: Check and format with Ruff:
 
   ```bash
-  uvx ruff check agy/ && uvx ruff format --check agy/
+  uvx ruff check agy/
+  uvx ruff format --check agy/
   ```
-
----
-
-## Security & Credential Hygiene
-
-* Secrets, tokens, and private keys are **never** committed to version control.
-* Sensitive values are stored exclusively in `~/.local/*.zsh` with file mode
-  `0600`.
-* The shell automatically sources private overrides from `~/.local/` on startup
-  via `.zshrc`.

@@ -1,0 +1,38 @@
+{
+  "sources": {
+    "skills_dir": "~/.agents/skills",
+    "rules_dir": "~/.agents/rules",
+    "mcp_file": "~/.agents/mcp/mcp_config.json"
+  },
+  "targets": {
+    "antigravity": {
+      "name": "Google Antigravity & Gemini CLI",
+      "mcp": {
+        "target_file": "~/.gemini/config/mcp_config.json",
+        "symlink_to": "~/.gemini/antigravity-cli/mcp_config.json"
+      },
+      "json_entries": [
+        {
+          "target_file": "~/.gemini/config/skills.json",
+          "source": "skills_dir"
+        },
+        {
+          "target_file": "~/.gemini/config/rules.json",
+          "source": "rules_dir"
+        }
+      ],
+      "settings": {
+        "target_file": "~/.gemini/antigravity-cli/settings.json",
+        "key": "modelProvider",
+        "value": "gemini"
+      }
+    },
+    "claude": {
+      "name": "Claude Code",
+      "skills_dir": "~/.claude/skills",
+      "mcp": {
+        "target_file": "~/.claude.json"
+      }
+    }
+  }
+}

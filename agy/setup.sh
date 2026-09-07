@@ -12,6 +12,8 @@
 #   6. Configures global MCP servers (~/.gemini/config/mcp_config.json)
 #   7. Antigravity CLI model provider (~/.gemini/antigravity-cli/settings.json)
 #   8. Local environment exports (~/.local/gemini_auth.zsh and macOS launchctl)
+#   9. Claude Code global skills (~/.claude/skills, symlinked)
+#  10. Claude Code MCP servers (~/.claude.json mcpServers key)
 # ==============================================================================
 
 set -eo pipefail
@@ -37,6 +39,8 @@ API_KEY=""
 SKILLS_DIR="$HOME/.agents/skills"
 RULES_DIR="$HOME/.agents/rules"
 MCP_DIR="$HOME/.agents/mcp"
+CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+CLAUDE_MCP_JSON="$HOME/.claude.json"
 REPO_URL="${SKILLS_REPO_URL:-https://github.com/kmassada/agent-skills.git}"
 CACHE_DIR="$HOME/.agents/.cache/agent-skills"
 
@@ -292,9 +296,49 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 7. Shell & GUI Environment Variables (GEMINI_API_KEY, SLACK credentials)
+# 7. Claude Code Global Skills (~/.claude/skills, symlinked)
 # ------------------------------------------------------------------------------
-log_info "7. Checking environment variables (GEMINI_API_KEY, SLACK credentials)..."
+log_info "7. Checking Claude Code skills (~/.claude/skills)..."
+
+if [ "$APPLY" = true ]; then
+    CLAUDE_SKILLS_RES=$(python3 "$PY_ENGINE" apply-claude-skills --skills-dir "$SKILLS_DIR" --claude-skills-dir "$CLAUDE_SKILLS_DIR")
+    if [ "$CLAUDE_SKILLS_RES" = "UPDATED" ]; then
+        log_success "Symlinked skills from $SKILLS_DIR into $CLAUDE_SKILLS_DIR"
+    else
+        log_success "Claude Code skills already symlinked from $SKILLS_DIR"
+    fi
+else
+    if python3 "$PY_ENGINE" check-claude-skills --skills-dir "$SKILLS_DIR" --claude-skills-dir "$CLAUDE_SKILLS_DIR" &>/dev/null; then
+        log_success "Claude Code skills are properly symlinked from: $SKILLS_DIR"
+    else
+        log_warn "Claude Code skills need symlinking (Run with --apply to configure)"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 8. Claude Code MCP Servers (~/.claude.json mcpServers key)
+# ------------------------------------------------------------------------------
+log_info "8. Checking Claude Code MCP servers (~/.claude.json)..."
+
+if [ "$APPLY" = true ]; then
+    CLAUDE_MCP_RES=$(python3 "$PY_ENGINE" apply-claude-mcp --mcp-source "$MCP_SRC" --claude-mcp-json "$CLAUDE_MCP_JSON")
+    if [ "$CLAUDE_MCP_RES" = "UPDATED" ]; then
+        log_success "Configured Claude Code mcpServers from: $MCP_SRC"
+    else
+        log_success "Claude Code mcpServers already up to date"
+    fi
+else
+    if python3 "$PY_ENGINE" check-claude-mcp --mcp-source "$MCP_SRC" --claude-mcp-json "$CLAUDE_MCP_JSON" &>/dev/null; then
+        log_success "Claude Code mcpServers are properly configured"
+    else
+        log_warn "Claude Code mcpServers need update (Run with --apply to configure)"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 9. Shell & GUI Environment Variables (GEMINI_API_KEY, SLACK credentials)
+# ------------------------------------------------------------------------------
+log_info "9. Checking environment variables (GEMINI_API_KEY, SLACK credentials)..."
 
 AUTH_ZSH="$LOCAL_DIR/gemini_auth.zsh"
 SLACK_ZSH="$LOCAL_DIR/slack_auth.zsh"
@@ -353,6 +397,8 @@ if [ "$APPLY" = true ]; then
     echo "  - Rules Config:     ${CYAN}$CONFIG_DIR/rules.json${RESET}"
     echo "  - MCP Config:       ${CYAN}$CONFIG_DIR/mcp_config.json${RESET}"
     echo "  - Model Provider:   ${CYAN}gemini (in ~/.gemini/antigravity-cli/settings.json)${RESET}"
+    echo "  - Claude Skills:    ${CYAN}$CLAUDE_SKILLS_DIR${RESET}"
+    echo "  - Claude MCP:       ${CYAN}$CLAUDE_MCP_JSON (mcpServers key)${RESET}"
     echo "  - Environment file: ${CYAN}$AUTH_ZSH${RESET}"
 else
     echo "${BOLD}Audit complete.${RESET} Run with ${CYAN}--apply${RESET} to configure."

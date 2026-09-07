@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""test_config.py - Unit tests for Antigravity configuration engine.
+"""Hermetic Unit Tests for Declarative Configuration Engine.
 
-Provides hermetic unit testing for agy/config.py with temporary directories
-and standard library unittest.
+Tests all generic primitives and declarative targets.json execution in an
+isolated temporary sandbox directory.
 """
 
+from __future__ import annotations
+
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,198 +20,284 @@ from unittest import mock
 from agy import config
 
 
-class TestConfigEngine(unittest.TestCase):
-    """Unit tests for config.py functions and CLI commands."""
-
+class TestDeclarativeConfigEngine(unittest.TestCase):
     def setUp(self) -> None:
-        """Create a hermetic sandbox for filesystem mutations."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.test_root = Path(self.temp_dir.name)
 
     def tearDown(self) -> None:
-        """Clean up the sandbox."""
         self.temp_dir.cleanup()
 
-    # --- JSON Helper Tests ---
+    # --- JSON I/O Tests ---
 
-    def test_load_json_missing_file_returns_empty_dict(self) -> None:
-        missing = self.test_root / "missing.json"
-        self.assertEqual(config.load_json(missing), {})
+    def test_save_load_json(self) -> None:
+        file_path = self.test_root / "test.json"
+        data = {"hello": "world", "count": 42}
+        config.save_json(file_path, data)
 
-    def test_load_json_corrupted_returns_empty_dict(self) -> None:
-        corrupted = self.test_root / "corrupted.json"
-        corrupted.write_text("{invalid json", encoding="utf-8")
-        self.assertEqual(config.load_json(corrupted), {})
+        loaded = config.load_json(file_path)
+        self.assertEqual(loaded, data)
 
-    def test_load_and_save_json_roundtrip(self) -> None:
-        target = self.test_root / "nested" / "target.json"
-        payload = {"key": "value", "count": 42}
-        config.save_json(target, payload)
-        self.assertTrue(target.is_file())
-        self.assertEqual(config.load_json(target), payload)
+    def test_load_json_non_existent(self) -> None:
+        loaded = config.load_json(self.test_root / "non_existent.json")
+        self.assertEqual(loaded, {})
 
-    # --- Skills & Rules Entry Tests ---
+    # --- JSON Entry Registry Tests ---
 
-    def test_check_entry_missing_file(self) -> None:
-        skills_file = self.test_root / "skills.json"
-        is_configured, status = config.check_entry(skills_file, "~/test/skills")
+    def test_check_and_apply_json_entry(self) -> None:
+        file_path = self.test_root / "skills.json"
+        entry_dir = self.test_root / "skills"
+        entry_dir.mkdir(parents=True)
+
+        is_configured, status = config.check_json_entry(file_path, entry_dir)
         self.assertFalse(is_configured)
-        self.assertEqual(status, "MISSING")
+        self.assertEqual(status, "MISSING_FILE")
 
-    def test_apply_and_check_entry(self) -> None:
-        rules_file = self.test_root / "rules.json"
-        target_dir = str(self.test_root / "rules")
-
-        # Initial apply should return True (updated)
-        updated = config.apply_entry(rules_file, target_dir)
+        updated = config.apply_json_entry(file_path, entry_dir)
         self.assertTrue(updated)
 
-        # Immediate re-apply should return False (already present)
-        updated_again = config.apply_entry(rules_file, target_dir)
-        self.assertFalse(updated_again)
-
-        # Check entry should return configured
-        is_configured, status = config.check_entry(rules_file, target_dir)
+        is_configured, status = config.check_json_entry(file_path, entry_dir)
         self.assertTrue(is_configured)
         self.assertEqual(status, "CONFIGURED")
 
-    # --- MCP Server Tests ---
+        # Second apply is a no-op
+        updated_again = config.apply_json_entry(file_path, entry_dir)
+        self.assertFalse(updated_again)
 
-    def test_check_mcp_missing_source_returns_no_source(self) -> None:
-        mcp_target = self.test_root / "mcp_target.json"
-        missing_source = self.test_root / "missing_source.json"
-        is_configured, status = config.check_mcp(mcp_target, missing_source)
-        self.assertTrue(is_configured)
-        self.assertEqual(status, "NO_SOURCE")
+    # --- MCP Merge Tests ---
 
-    def test_apply_mcp_merges_and_preserves_unmanaged_servers(self) -> None:
-        mcp_source = self.test_root / "mcp_source.json"
-        mcp_target = self.test_root / "mcp_target.json"
+    def test_check_and_apply_mcp(self) -> None:
+        target_file = self.test_root / "target_mcp.json"
+        source_file = self.test_root / "source_mcp.json"
 
-        # Pre-existing target with an unmanaged custom server
         config.save_json(
-            mcp_target,
+            source_file,
             {
                 "mcpServers": {
-                    "custom_server": {
-                        "command": "python3",
-                        "args": ["server.py"],
-                    }
+                    "slack": {"command": "npx", "args": ["@mcp/slack"]},
+                    "gemini": {"command": "uvx", "args": ["gemini-mcp"]},
                 }
             },
         )
+        config.save_json(
+            target_file,
+            {
+                "unrelatedKey": True,
+                "mcpServers": {
+                    "custom": {"command": "custom-cmd"},
+                },
+            },
+        )
 
-        # Source with new Slack server
-        source_data = {
-            "mcpServers": {
-                "slack": {
-                    "command": "npx",
-                    "args": ["@modelcontextprotocol/server-slack"],
-                    "env": {"SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"},
-                }
-            }
-        }
-        config.save_json(mcp_source, source_data)
-
-        # Needs update initially
-        is_configured, status = config.check_mcp(mcp_target, mcp_source)
+        is_configured, status = config.check_mcp(target_file, source_file)
         self.assertFalse(is_configured)
         self.assertEqual(status, "NEEDS_UPDATE")
 
-        # Apply update
-        updated = config.apply_mcp(mcp_target, mcp_source)
+        updated = config.apply_mcp(target_file, source_file)
         self.assertTrue(updated)
 
-        # Verify merged state
-        target_data = config.load_json(mcp_target)
-        self.assertIn("custom_server", target_data["mcpServers"])
-        self.assertIn("slack", target_data["mcpServers"])
-        self.assertEqual(
-            target_data["mcpServers"]["slack"]["command"],
-            "npx",
-        )
+        tgt_data = config.load_json(target_file)
+        self.assertTrue(tgt_data.get("unrelatedKey"))
+        self.assertIn("custom", tgt_data["mcpServers"])
+        self.assertIn("slack", tgt_data["mcpServers"])
+        self.assertIn("gemini", tgt_data["mcpServers"])
 
-        # Subsequent apply should return False (already up to date)
-        self.assertFalse(config.apply_mcp(mcp_target, mcp_source))
-        is_configured, status = config.check_mcp(mcp_target, mcp_source)
+        is_configured, status = config.check_mcp(target_file, source_file)
         self.assertTrue(is_configured)
         self.assertEqual(status, "CONFIGURED")
 
-    # --- Provider Tests ---
+        # Second apply is a no-op
+        self.assertFalse(config.apply_mcp(target_file, source_file))
 
-    def test_provider_management(self) -> None:
-        settings_file = self.test_root / "settings.json"
+    # --- Skill Symlinks Tests ---
 
-        # Missing file
-        self.assertEqual(config.get_provider(settings_file), "")
-        is_ok, status = config.check_provider(settings_file, "gemini")
-        self.assertFalse(is_ok)
-        self.assertEqual(status, "MISSING")
+    def test_check_and_apply_skill_symlinks(self) -> None:
+        source_dir = self.test_root / "skills"
+        target_dir = self.test_root / "claude_skills"
 
-        # Apply provider
-        updated = config.apply_provider(settings_file, "gemini")
+        skill_a = source_dir / "skill-a"
+        skill_a.mkdir(parents=True)
+        (skill_a / "SKILL.md").write_text("# Skill A", encoding="utf-8")
+
+        # Directory without SKILL.md must be ignored
+        (source_dir / "ignored-folder").mkdir(parents=True)
+
+        is_configured, status = config.check_skill_symlinks(target_dir, source_dir)
+        self.assertFalse(is_configured)
+        self.assertEqual(status, "MISSING_DIR")
+
+        updated = config.apply_skill_symlinks(target_dir, source_dir)
         self.assertTrue(updated)
-        self.assertEqual(config.get_provider(settings_file), "gemini")
 
-        # Check configured
-        is_ok, status = config.check_provider(settings_file, "gemini")
+        link_a = target_dir / "skill-a"
+        self.assertTrue(link_a.is_symlink())
+        self.assertEqual(link_a.resolve(), skill_a.resolve())
+        self.assertFalse((target_dir / "ignored-folder").exists())
+
+        is_configured, status = config.check_skill_symlinks(target_dir, source_dir)
+        self.assertTrue(is_configured)
+        self.assertEqual(status, "CONFIGURED")
+
+        # Re-apply is a no-op
+        self.assertFalse(config.apply_skill_symlinks(target_dir, source_dir))
+
+    def test_skill_symlinks_does_not_clobber_real_directory(self) -> None:
+        source_dir = self.test_root / "skills"
+        target_dir = self.test_root / "claude_skills"
+
+        skill_a = source_dir / "skill-a"
+        skill_a.mkdir(parents=True)
+        (skill_a / "SKILL.md").write_text("# Skill A", encoding="utf-8")
+
+        # Pre-existing real directory in target
+        real_dir = target_dir / "skill-a"
+        real_dir.mkdir(parents=True)
+        (real_dir / "local.txt").write_text("local", encoding="utf-8")
+
+        updated = config.apply_skill_symlinks(target_dir, source_dir)
+        self.assertFalse(updated)
+        self.assertFalse(real_dir.is_symlink())
+        self.assertTrue((real_dir / "local.txt").is_file())
+
+    # --- JSON Key Setting Tests ---
+
+    def test_check_and_apply_json_key(self) -> None:
+        settings_file = self.test_root / "settings.json"
+        is_ok, status = config.check_json_key(settings_file, "modelProvider", "gemini")
+        self.assertFalse(is_ok)
+        self.assertEqual(status, "MISSING_FILE")
+
+        updated = config.apply_json_key(settings_file, "modelProvider", "gemini")
+        self.assertTrue(updated)
+
+        is_ok, status = config.check_json_key(settings_file, "modelProvider", "gemini")
         self.assertTrue(is_ok)
         self.assertEqual(status, "CONFIGURED")
 
-        # Re-apply with same provider returns False
-        self.assertFalse(config.apply_provider(settings_file, "gemini"))
+        self.assertFalse(
+            config.apply_json_key(settings_file, "modelProvider", "gemini")
+        )
 
-    # --- CLI Dispatcher Tests ---
+    # --- Symlink Tests ---
 
-    def test_cli_audit_and_apply(self) -> None:
-        skills_json = self.test_root / "skills.json"
-        rules_json = self.test_root / "rules.json"
-        mcp_json = self.test_root / "mcp.json"
-        mcp_source = self.test_root / "mcp_source.json"
-        agy_settings = self.test_root / "settings.json"
+    def test_check_and_apply_symlink(self) -> None:
+        target = self.test_root / "target.txt"
+        target.write_text("content", encoding="utf-8")
+        link = self.test_root / "link.txt"
 
-        config.save_json(mcp_source, {"mcpServers": {"test": {"command": "t"}}})
+        is_ok, status = config.check_symlink(link, target)
+        self.assertFalse(is_ok)
+        self.assertEqual(status, "MISSING_LINK")
 
-        base_args = [
-            "config.py",
-            "--skills-json",
-            str(skills_json),
-            "--rules-json",
-            str(rules_json),
-            "--mcp-json",
-            str(mcp_json),
-            "--mcp-source",
-            str(mcp_source),
-            "--agy-settings",
-            str(agy_settings),
-        ]
+        updated = config.apply_symlink(link, target)
+        self.assertTrue(updated)
 
-        # Audit should exit with code 1 before applying
+        is_ok, status = config.check_symlink(link, target)
+        self.assertTrue(is_ok)
+        self.assertEqual(status, "CONFIGURED")
+
+        self.assertFalse(config.apply_symlink(link, target))
+
+    # --- End-to-End Declarative Engine Tests ---
+
+    def test_declarative_engine_audit_and_apply(self) -> None:
+        skills_src = self.test_root / "src_skills"
+        rules_src = self.test_root / "src_rules"
+        mcp_src = self.test_root / "src_mcp.json"
+
+        skills_src.mkdir(parents=True)
+        rules_src.mkdir(parents=True)
+        skill_1 = skills_src / "skill-one"
+        skill_1.mkdir(parents=True)
+        (skill_1 / "SKILL.md").write_text("# Skill", encoding="utf-8")
+
+        config.save_json(mcp_src, {"mcpServers": {"test_srv": {"command": "echo"}}})
+
+        agy_mcp = self.test_root / "gemini" / "mcp.json"
+        agy_mcp_sym = self.test_root / "gemini_cli" / "mcp.json"
+        agy_skills = self.test_root / "gemini" / "skills.json"
+        agy_rules = self.test_root / "gemini" / "rules.json"
+        agy_settings = self.test_root / "gemini_cli" / "settings.json"
+
+        claude_skills = self.test_root / "claude" / "skills"
+        claude_mcp = self.test_root / "claude.json"
+
+        targets_json_path = self.test_root / "test_targets.json"
+        config.save_json(
+            targets_json_path,
+            {
+                "sources": {
+                    "skills_dir": str(skills_src),
+                    "rules_dir": str(rules_src),
+                    "mcp_file": str(mcp_src),
+                },
+                "targets": {
+                    "antigravity": {
+                        "name": "Antigravity",
+                        "mcp": {
+                            "target_file": str(agy_mcp),
+                            "symlink_to": str(agy_mcp_sym),
+                        },
+                        "json_entries": [
+                            {"target_file": str(agy_skills), "source": "skills_dir"},
+                            {"target_file": str(agy_rules), "source": "rules_dir"},
+                        ],
+                        "settings": {
+                            "target_file": str(agy_settings),
+                            "key": "modelProvider",
+                            "value": "gemini",
+                        },
+                    },
+                    "claude": {
+                        "name": "Claude Code",
+                        "skills_dir": str(claude_skills),
+                        "mcp": {
+                            "target_file": str(claude_mcp),
+                        },
+                    },
+                },
+            },
+        )
+
+        base_args = ["--targets-file", str(targets_json_path)]
+
+        # Audit should fail before apply
         with (
-            mock.patch("sys.argv", base_args + ["audit"]),
-            mock.patch("sys.stdout"),
+            mock.patch("sys.argv", ["config.py", *base_args, "audit"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO),
+            self.assertRaises(SystemExit) as cm,
         ):
-            with self.assertRaises(SystemExit) as cm:
-                config.main()
-            self.assertEqual(cm.exception.code, 1)
+            config.main()
+        self.assertEqual(cm.exception.code, 1)
 
-        # Apply should exit with code 0
+        # Apply all targets
         with (
-            mock.patch("sys.argv", base_args + ["apply"]),
-            mock.patch("sys.stdout"),
+            mock.patch("sys.argv", ["config.py", *base_args, "apply"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO),
+            self.assertRaises(SystemExit) as cm,
         ):
-            with self.assertRaises(SystemExit) as cm:
-                config.main()
-            self.assertEqual(cm.exception.code, 0)
+            config.main()
+        self.assertEqual(cm.exception.code, 0)
 
-        # Subsequent audit should now exit with code 0
+        # Verify audit now succeeds
         with (
-            mock.patch("sys.argv", base_args + ["audit"]),
-            mock.patch("sys.stdout"),
+            mock.patch("sys.argv", ["config.py", *base_args, "audit"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO),
+            self.assertRaises(SystemExit) as cm,
         ):
-            with self.assertRaises(SystemExit) as cm:
-                config.main()
-            self.assertEqual(cm.exception.code, 0)
+            config.main()
+        self.assertEqual(cm.exception.code, 0)
+
+        # Audit single target: claude
+        with (
+            mock.patch(
+                "sys.argv", ["config.py", *base_args, "--target", "claude", "audit"]
+            ),
+            mock.patch("sys.stdout", new_callable=io.StringIO),
+            self.assertRaises(SystemExit) as cm,
+        ):
+            config.main()
+        self.assertEqual(cm.exception.code, 0)
 
 
 if __name__ == "__main__":
