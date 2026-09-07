@@ -83,6 +83,12 @@ brew "zsh-syntax-highlighting"
 brew "mas"
 # Collection of apps and services for photography, design, video, web, and UX
 cask "adobe-creative-cloud"
+# Agent orchestration platform
+cask "antigravity"
+# Terminal interface for Antigravity agents
+cask "antigravity-cli"
+# AI Coding Agent IDE
+cask "antigravity-ide"
 # Desktop password and login vault
 cask "bitwarden"
 # Control your Elgato key lights
