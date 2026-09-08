@@ -13,7 +13,7 @@ and authentication credentials using a declarative, config-driven architecture.
 
 All source locations, Homebrew casks, and agent-specific discovery requirements
 are declared in
-[`targets.json`](file:///Users/kmassada/src/dotfiles/agy/targets.json):
+[`targets.json`](file:///Users/kmassada/src/dotfiles/agents/targets.json):
 
 ```json
 {
@@ -68,7 +68,7 @@ are declared in
 ### Generic Primitives
 
 The Python engine
-[`config.py`](file:///Users/kmassada/src/dotfiles/agy/config.py)
+[`config.py`](file:///Users/kmassada/src/dotfiles/agents/config.py)
 implements generic, stateless primitives:
 
 1. **`check_casks` / `apply_casks`**: Audits and installs tool-specific Homebrew
@@ -107,27 +107,27 @@ Run the shell script without flags to check default configuration (`antigravity`
 only, ideal for work machines):
 
 ```bash
-./agy/setup.sh
+./agents/setup.sh
 ```
 
 Audit both Antigravity and Claude Code:
 
 ```bash
-./agy/setup.sh --with-claude
+./agents/setup.sh --with-claude
 ```
 
 Or run the Python engine directly to audit all targets or an individual agent:
 
 ```bash
-python3 agy/config.py audit
-python3 agy/config.py audit --target claude
-python3 agy/config.py audit --target antigravity
+python3 agents/config.py audit
+python3 agents/config.py audit --target claude
+python3 agents/config.py audit --target antigravity
 ```
 
 Structured JSON output is also supported:
 
 ```bash
-python3 agy/config.py audit --format json
+python3 agents/config.py audit --format json
 ```
 
 ### Apply Configuration
@@ -135,31 +135,31 @@ python3 agy/config.py audit --format json
 Apply missing casks and configure discovery for Antigravity (default):
 
 ```bash
-./agy/setup.sh --apply
+./agents/setup.sh --apply
 ```
 
 Opt-in to install and configure Claude Code alongside Antigravity:
 
 ```bash
-./agy/setup.sh --apply --with-claude
+./agents/setup.sh --apply --with-claude
 ```
 
 Configure Claude Code only:
 
 ```bash
-./agy/setup.sh --apply --target claude
+./agents/setup.sh --apply --target claude
 ```
 
 Skip Homebrew cask installations (e.g. in CI or lightweight environments):
 
 ```bash
-./agy/setup.sh --apply --no-casks
+./agents/setup.sh --apply --no-casks
 ```
 
 Or apply target configurations directly via Python:
 
 ```bash
-python3 agy/config.py apply --target claude
+python3 agents/config.py apply --target claude
 ```
 
 ### Configure Credentials
@@ -168,7 +168,7 @@ Set your Gemini API key in `~/.local/gemini_auth.zsh` and export to macOS
 `launchctl`:
 
 ```bash
-./agy/setup.sh --apply --key "AIzaSy..."
+./agents/setup.sh --apply --key "AIzaSy..."
 ```
 
 For Slack MCP credentials, use the dedicated Slack bootstrapper:
@@ -197,8 +197,8 @@ to `targets.json`:
 }
 ```
 
-Running `python3 agy/config.py audit` or `apply` will automatically discover and
-configure the new target.
+Running `python3 agents/config.py audit` or `apply` will automatically discover
+and configure the new target.
 
 ---
 
@@ -209,18 +209,18 @@ All Python code adheres to strict quality and typing standards:
 * **Unit Testing**: Run hermetic unit tests with standard library `unittest`:
 
   ```bash
-  python3 -m unittest discover -s agy
+  python3 -m unittest discover -s agents
   ```
 
 * **Static Type Checking**: Verify static types with Pyright:
 
   ```bash
-  uvx pyright agy/
+  uvx pyright agents/
   ```
 
 * **Formatting & Linting**: Check and format with Ruff:
 
   ```bash
-  uvx ruff check agy/
-  uvx ruff format --check agy/
+  uvx ruff check agents/
+  uvx ruff format --check agents/
   ```

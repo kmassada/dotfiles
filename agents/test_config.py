@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from unittest import mock
 
-from agy import config
+from agents import config
 
 
 class TestDeclarativeConfigEngine(unittest.TestCase):

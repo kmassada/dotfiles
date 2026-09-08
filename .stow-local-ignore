@@ -6,5 +6,5 @@
 ^LICENSE$
 ^\.git.*
 ^scripts$
-^agy$
+^agents$
 ^\.stow-local-ignore$

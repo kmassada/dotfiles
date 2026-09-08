@@ -6,12 +6,12 @@
 # model provider configurations, and authentication credentials.
 #
 # Usage:
-#   ./agy/setup.sh                     # Audit current configuration (default target: antigravity)
-#   ./agy/setup.sh --apply             # Apply configuration changes
-#   ./agy/setup.sh --with-claude       # Include Claude Code in audit or apply
-#   ./agy/setup.sh --target all        # Target all configured agents
-#   ./agy/setup.sh --no-casks          # Skip Homebrew cask installations
-#   ./agy/setup.sh --key "AIzaSy..."   # Set or update GEMINI_API_KEY
+#   ./agents/setup.sh                  # Audit current configuration (default target: antigravity)
+#   ./agents/setup.sh --apply          # Apply configuration changes
+#   ./agents/setup.sh --with-claude    # Include Claude Code in audit or apply
+#   ./agents/setup.sh --target all     # Target all configured agents
+#   ./agents/setup.sh --no-casks       # Skip Homebrew cask installations
+#   ./agents/setup.sh --key "AIzaSy..." # Set or update GEMINI_API_KEY
 #
 
 set -euo pipefail

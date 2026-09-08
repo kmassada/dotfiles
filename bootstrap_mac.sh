@@ -33,6 +33,7 @@ NO_SSH=false
 NO_SSHD=false
 NO_SETTINGS=false
 NO_WEBAPPS=false
+NO_AGENTS=false
 NO_AGY=false
 WITH_CLAUDE=false
 NO_PULL=false
@@ -47,7 +48,7 @@ Options:
   --no-mas       Skip Mac App Store applications in Brewfile
   --no-settings  Skip configuring macOS preferences (Dock, Finder, Ergonomics)
   --no-webapps   Skip Progressive Web Apps setup (automatically skipped on *.internal)
-  --no-agy       Skip Antigravity skills, rules, and model provider setup
+  --no-agents    Skip AI agent environment setup (skills, rules, MCP, casks)
   --with-claude  Opt-in to install and configure Claude Code alongside Antigravity
   --no-ssh       Skip SSH client key setup for GitHub
   --no-sshd      Skip enabling Remote Login (SSH server)
@@ -70,9 +71,9 @@ while [[ $# -gt 0 ]]; do
         --no-casks)    NO_CASKS=true; shift ;;
         --no-mas)      NO_MAS=true; shift ;;
         --no-settings) NO_SETTINGS=true; shift ;;
-        --no-webapps)  NO_WEBAPPS=true; shift ;;
-        --no-agy)      NO_AGY=true; shift ;;
-        --with-claude) WITH_CLAUDE=true; shift ;;
+        --no-webapps)        NO_WEBAPPS=true; shift ;;
+        --no-agents|--no-agy) NO_AGENTS=true; NO_AGY=true; shift ;;
+        --with-claude)       WITH_CLAUDE=true; shift ;;
         --no-ssh)      NO_SSH=true; shift ;;
         --no-sshd)     NO_SSHD=true; shift ;;
         --no-pull)     NO_PULL=true; shift ;;
@@ -271,25 +272,25 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 11. Antigravity & AI Agent Environment (Skills & Rules)
+# 11. AI Agent Environment (Skills, Rules, MCP, Casks)
 # ------------------------------------------------------------------------------
-if [ "$NO_AGY" = false ]; then
-    AGY_SCRIPT="$DOTFILES_DIR/agy/setup.sh"
-    if [[ -x "$AGY_SCRIPT" ]]; then
+if [ "$NO_AGENTS" = false ] && [ "$NO_AGY" = false ]; then
+    AGENTS_SCRIPT="$DOTFILES_DIR/agents/setup.sh"
+    if [[ -x "$AGENTS_SCRIPT" ]]; then
         log_info "Configuring AI agent environment (skills, rules, MCP, casks)..."
-        AGY_FLAGS=(--apply)
+        AGENTS_FLAGS=(--apply)
         if [ "$WITH_CLAUDE" = true ]; then
-            AGY_FLAGS+=(--with-claude)
+            AGENTS_FLAGS+=(--with-claude)
         fi
         if [ "$NO_CASKS" = true ] || [ "$CLI_ONLY" = true ]; then
-            AGY_FLAGS+=(--no-casks)
+            AGENTS_FLAGS+=(--no-casks)
         fi
-        "$AGY_SCRIPT" "${AGY_FLAGS[@]}"
+        "$AGENTS_SCRIPT" "${AGENTS_FLAGS[@]}"
     else
-        log_warn "Antigravity setup script not found or not executable at $AGY_SCRIPT"
+        log_warn "Agent setup script not found or not executable at $AGENTS_SCRIPT"
     fi
 else
-    log_info "Skipping Antigravity environment setup (--no-agy)."
+    log_info "Skipping AI agent environment setup (--no-agents)."
 fi
 
 # ------------------------------------------------------------------------------
