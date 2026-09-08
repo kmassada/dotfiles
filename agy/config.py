@@ -30,16 +30,32 @@ DEFAULT_TARGETS_FILE = Path(__file__).resolve().parent / "targets.json"
 
 
 def expand_path(path_str: str | Path) -> Path:
-    """Expands user variables (~/) into an absolute Path without following symlinks."""
+    """Expand user variables (~/) into an absolute Path without resolving symlinks.
+
+    Args:
+        path_str: Raw file or directory path string or Path instance.
+
+    Returns:
+        Expanded Path with user directory substituted.
+
+    """
     return Path(os.path.expanduser(str(path_str)))
 
 
 def load_json(file_path: Path) -> dict[str, Any]:
-    """Loads JSON from file_path, returning an empty dict if the file is missing."""
+    """Load JSON from file_path, returning an empty dict if the file is missing.
+
+    Args:
+        file_path: Path to the target JSON file.
+
+    Returns:
+        Parsed JSON dictionary, or empty dict if missing or malformed.
+
+    """
     if not file_path.is_file():
         return {}
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
             return data if isinstance(data, dict) else {}
     except (json.JSONDecodeError, OSError):
@@ -47,7 +63,13 @@ def load_json(file_path: Path) -> dict[str, Any]:
 
 
 def save_json(file_path: Path, data: Mapping[str, Any]) -> None:
-    """Atomically writes JSON to file_path with 2-space indentation."""
+    """Atomically write JSON to file_path with 2-space indentation.
+
+    Args:
+        file_path: Target destination file path.
+        data: Mapping to serialize as JSON.
+
+    """
     file_path.parent.mkdir(parents=True, exist_ok=True)
     temp_dir = file_path.parent
     with tempfile.NamedTemporaryFile(
@@ -65,7 +87,16 @@ def save_json(file_path: Path, data: Mapping[str, Any]) -> None:
 
 
 def check_json_entry(target_file: Path, item_path: Path) -> tuple[bool, str]:
-    """Checks whether item_path is registered in target_file's 'entries' list."""
+    """Check whether item_path is registered in target_file's 'entries' list.
+
+    Args:
+        target_file: Path to the JSON registry file.
+        item_path: Directory path to verify in registry entries.
+
+    Returns:
+        Tuple of (is_configured, status_message).
+
+    """
     if not target_file.is_file():
         return False, "MISSING_FILE"
 
@@ -85,14 +116,23 @@ def check_json_entry(target_file: Path, item_path: Path) -> tuple[bool, str]:
         p = entry.get("path")
         if not isinstance(p, str):
             continue
-        if p == item_norm or p == item_str or str(expand_path(p).resolve()) == item_abs:
+        if p in (item_norm, item_str) or str(expand_path(p).resolve()) == item_abs:
             return True, "CONFIGURED"
 
     return False, "NEEDS_UPDATE"
 
 
 def apply_json_entry(target_file: Path, item_path: Path) -> bool:
-    """Ensures item_path is registered in target_file's 'entries' list."""
+    """Ensure item_path is registered in target_file's 'entries' list.
+
+    Args:
+        target_file: Path to the JSON registry file.
+        item_path: Directory path to ensure in registry entries.
+
+    Returns:
+        True if the file was modified, False if already configured.
+
+    """
     is_configured, _ = check_json_entry(target_file, item_path)
     if is_configured:
         return False
@@ -113,7 +153,16 @@ def apply_json_entry(target_file: Path, item_path: Path) -> bool:
 
 
 def check_mcp(target_file: Path, source_file: Path) -> tuple[bool, str]:
-    """Checks whether target_file has all mcpServers defined in source_file."""
+    """Check whether target_file has all mcpServers defined in source_file.
+
+    Args:
+        target_file: Destination JSON file containing an mcpServers mapping.
+        source_file: Source template JSON defining upstream mcpServers.
+
+    Returns:
+        Tuple of (is_configured, status_message).
+
+    """
     if not source_file.is_file():
         return True, "NO_SOURCE"
 
@@ -138,7 +187,16 @@ def check_mcp(target_file: Path, source_file: Path) -> tuple[bool, str]:
 
 
 def apply_mcp(target_file: Path, source_file: Path) -> bool:
-    """Merges mcpServers from source_file into target_file preserving other keys."""
+    """Merge mcpServers from source_file into target_file preserving other keys.
+
+    Args:
+        target_file: Destination JSON file to update.
+        source_file: Source template JSON defining upstream mcpServers.
+
+    Returns:
+        True if changes were made and saved, False if already up to date.
+
+    """
     if not source_file.is_file():
         return False
 
@@ -165,8 +223,16 @@ def apply_mcp(target_file: Path, source_file: Path) -> bool:
     return False
 
 
-def get_skill_packages(source_skills_dir: Path) -> list[Path]:
-    """Returns valid skill package directories (containing SKILL.md) in source_skills_dir."""
+def get_skill_packages(source_skills_dir: Path) -> Sequence[Path]:
+    """Return valid skill package directories containing SKILL.md.
+
+    Args:
+        source_skills_dir: Root directory containing potential skill packages.
+
+    Returns:
+        Sorted sequence of directories containing a valid SKILL.md document.
+
+    """
     if not source_skills_dir.is_dir():
         return []
     return sorted(
@@ -179,7 +245,16 @@ def get_skill_packages(source_skills_dir: Path) -> list[Path]:
 def check_skill_symlinks(
     target_skills_dir: Path, source_skills_dir: Path
 ) -> tuple[bool, str]:
-    """Checks that every skill package from source is symlinked in target_skills_dir."""
+    """Check that every skill package from source is symlinked in target_skills_dir.
+
+    Args:
+        target_skills_dir: Destination directory where symlinks should exist.
+        source_skills_dir: Source directory containing authoritative skills.
+
+    Returns:
+        Tuple of (is_configured, status_message).
+
+    """
     skills = get_skill_packages(source_skills_dir)
     if not skills:
         return True, "NO_SOURCE"
@@ -195,7 +270,16 @@ def check_skill_symlinks(
 
 
 def apply_skill_symlinks(target_skills_dir: Path, source_skills_dir: Path) -> bool:
-    """Symlinks every skill package from source into target_skills_dir without clobbering."""
+    """Symlink skill packages from source into target without clobbering.
+
+    Args:
+        target_skills_dir: Destination directory for symlinks.
+        source_skills_dir: Authoritative directory containing skill packages.
+
+    Returns:
+        True if new symlinks were created or fixed, False if already configured.
+
+    """
     skills = get_skill_packages(source_skills_dir)
     if not skills:
         return False
@@ -217,7 +301,17 @@ def apply_skill_symlinks(target_skills_dir: Path, source_skills_dir: Path) -> bo
 
 
 def check_json_key(target_file: Path, key: str, expected_val: Any) -> tuple[bool, str]:
-    """Checks whether key in target_file matches expected_val."""
+    """Check whether key in target_file matches expected_val.
+
+    Args:
+        target_file: Target JSON file path.
+        key: Top-level dictionary key to inspect.
+        expected_val: Expected value for the given key.
+
+    Returns:
+        Tuple of (is_configured, status_message).
+
+    """
     if not target_file.is_file():
         return False, "MISSING_FILE"
     data = load_json(target_file)
@@ -227,7 +321,17 @@ def check_json_key(target_file: Path, key: str, expected_val: Any) -> tuple[bool
 
 
 def apply_json_key(target_file: Path, key: str, val: Any) -> bool:
-    """Sets key in target_file to val if different."""
+    """Set key in target_file to val if different.
+
+    Args:
+        target_file: Target JSON file path.
+        key: Top-level dictionary key to write.
+        val: Value to assign to the key.
+
+    Returns:
+        True if file was updated, False if already matching val.
+
+    """
     data = load_json(target_file)
     if data.get(key) != val:
         data[key] = val
@@ -237,7 +341,16 @@ def apply_json_key(target_file: Path, key: str, val: Any) -> bool:
 
 
 def check_symlink(link_path: Path, target_path: Path) -> tuple[bool, str]:
-    """Checks if link_path is a symlink pointing to target_path."""
+    """Check if link_path is a symlink pointing to target_path.
+
+    Args:
+        link_path: Path where symlink is expected.
+        target_path: Path the symlink must resolve to.
+
+    Returns:
+        Tuple of (is_configured, status_message).
+
+    """
     if not link_path.is_symlink():
         return False, "MISSING_LINK"
     if link_path.resolve() == target_path.resolve():
@@ -246,7 +359,16 @@ def check_symlink(link_path: Path, target_path: Path) -> tuple[bool, str]:
 
 
 def apply_symlink(link_path: Path, target_path: Path) -> bool:
-    """Ensures link_path is a symlink pointing to target_path."""
+    """Ensure link_path is a symlink pointing to target_path.
+
+    Args:
+        link_path: Path where symlink should be created.
+        target_path: Destination path the symlink should reference.
+
+    Returns:
+        True if symlink was created or updated, False if already correct.
+
+    """
     if link_path.is_symlink():
         if link_path.resolve() == target_path.resolve():
             return False
@@ -265,7 +387,15 @@ def apply_symlink(link_path: Path, target_path: Path) -> bool:
 
 
 def load_targets(targets_file: Path) -> tuple[dict[str, Path], dict[str, Any]]:
-    """Loads and resolves sources and targets from targets.json."""
+    """Load and resolve sources and targets from targets.json.
+
+    Args:
+        targets_file: Path to targets.json specification.
+
+    Returns:
+        Tuple of (resolved_sources_mapping, raw_targets_mapping).
+
+    """
     data = load_json(targets_file)
     raw_sources = data.get("sources", {})
     sources: dict[str, Path] = {}
@@ -285,7 +415,17 @@ def load_targets(targets_file: Path) -> tuple[dict[str, Path], dict[str, Any]]:
 def audit_target(
     target_id: str, target_cfg: Mapping[str, Any], sources: Mapping[str, Path]
 ) -> dict[str, dict[str, Any]]:
-    """Audits all declarative steps for a single target."""
+    """Audit all declarative steps for a single target.
+
+    Args:
+        target_id: Identifier key for target (e.g. 'claude', 'antigravity').
+        target_cfg: Mapping containing target configuration schema.
+        sources: Mapping of resolved authoritative source paths.
+
+    Returns:
+        Dictionary mapping step names to audit result dictionaries.
+
+    """
     results: dict[str, dict[str, Any]] = {}
 
     # 1. MCP Configuration
@@ -354,7 +494,17 @@ def audit_target(
 def apply_target(
     target_id: str, target_cfg: Mapping[str, Any], sources: Mapping[str, Path]
 ) -> dict[str, bool]:
-    """Applies all declarative steps for a single target."""
+    """Apply all declarative steps for a single target.
+
+    Args:
+        target_id: Identifier key for target.
+        target_cfg: Mapping containing target configuration schema.
+        sources: Mapping of resolved authoritative source paths.
+
+    Returns:
+        Dictionary mapping step names to boolean update statuses.
+
+    """
     results: dict[str, bool] = {}
 
     # 1. MCP Configuration
@@ -408,7 +558,12 @@ def apply_target(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Builds the unified CLI argument parser."""
+    """Build the unified CLI argument parser.
+
+    Returns:
+        Configured ArgumentParser instance.
+
+    """
     parser = argparse.ArgumentParser(
         description="Declarative Configuration Engine for AI Agents"
     )
@@ -472,7 +627,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """CLI execution entrypoint."""
+    """Execute primary CLI routine.
+
+    Args:
+        argv: Optional sequence of command line arguments.
+
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -620,7 +780,8 @@ def main(argv: Sequence[str] | None = None) -> None:
                     ok = info.get("ok", False)
                     mark = "✓" if ok else "!"
                     print(
-                        f"    [{mark}] {step}: {info.get('status')} ({info.get('target')})"
+                        f"    [{mark}] {step}: {info.get('status')} "
+                        f"({info.get('target')})"
                     )
 
         sys.exit(0 if all_ok else 1)

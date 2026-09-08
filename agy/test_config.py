@@ -21,16 +21,21 @@ from agy import config
 
 
 class TestDeclarativeConfigEngine(unittest.TestCase):
+    """Hermetic test suite for generic agent primitives and targets runner."""
+
     def setUp(self) -> None:
+        """Create an isolated temporary sandbox directory for each test run."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.test_root = Path(self.temp_dir.name)
 
     def tearDown(self) -> None:
+        """Clean up the isolated temporary sandbox directory."""
         self.temp_dir.cleanup()
 
     # --- JSON I/O Tests ---
 
     def test_save_load_json(self) -> None:
+        """Verify atomic JSON serialization and round-trip loading."""
         file_path = self.test_root / "test.json"
         data = {"hello": "world", "count": 42}
         config.save_json(file_path, data)
@@ -39,12 +44,14 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
         self.assertEqual(loaded, data)
 
     def test_load_json_non_existent(self) -> None:
+        """Verify loading missing or empty JSON paths returns an empty dict."""
         loaded = config.load_json(self.test_root / "non_existent.json")
         self.assertEqual(loaded, {})
 
     # --- JSON Entry Registry Tests ---
 
     def test_check_and_apply_json_entry(self) -> None:
+        """Verify checking and adding paths into JSON registry entries."""
         file_path = self.test_root / "skills.json"
         entry_dir = self.test_root / "skills"
         entry_dir.mkdir(parents=True)
@@ -60,13 +67,14 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
         self.assertTrue(is_configured)
         self.assertEqual(status, "CONFIGURED")
 
-        # Second apply is a no-op
+        # Second apply is an idempotent no-op
         updated_again = config.apply_json_entry(file_path, entry_dir)
         self.assertFalse(updated_again)
 
     # --- MCP Merge Tests ---
 
     def test_check_and_apply_mcp(self) -> None:
+        """Verify non-destructive dictionary merging for mcpServers."""
         target_file = self.test_root / "target_mcp.json"
         source_file = self.test_root / "source_mcp.json"
 
@@ -106,12 +114,13 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
         self.assertTrue(is_configured)
         self.assertEqual(status, "CONFIGURED")
 
-        # Second apply is a no-op
+        # Second apply is an idempotent no-op
         self.assertFalse(config.apply_mcp(target_file, source_file))
 
     # --- Skill Symlinks Tests ---
 
     def test_check_and_apply_skill_symlinks(self) -> None:
+        """Verify discovery and symlinking of valid skill directories."""
         source_dir = self.test_root / "skills"
         target_dir = self.test_root / "claude_skills"
 
@@ -138,10 +147,11 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
         self.assertTrue(is_configured)
         self.assertEqual(status, "CONFIGURED")
 
-        # Re-apply is a no-op
+        # Re-apply is an idempotent no-op
         self.assertFalse(config.apply_skill_symlinks(target_dir, source_dir))
 
     def test_skill_symlinks_does_not_clobber_real_directory(self) -> None:
+        """Verify pre-existing non-symlink directories are never clobbered."""
         source_dir = self.test_root / "skills"
         target_dir = self.test_root / "claude_skills"
 
@@ -162,6 +172,7 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
     # --- JSON Key Setting Tests ---
 
     def test_check_and_apply_json_key(self) -> None:
+        """Verify setting and checking top-level JSON settings."""
         settings_file = self.test_root / "settings.json"
         is_ok, status = config.check_json_key(settings_file, "modelProvider", "gemini")
         self.assertFalse(is_ok)
@@ -181,6 +192,7 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
     # --- Symlink Tests ---
 
     def test_check_and_apply_symlink(self) -> None:
+        """Verify file and directory symlink creation and validation."""
         target = self.test_root / "target.txt"
         target.write_text("content", encoding="utf-8")
         link = self.test_root / "link.txt"
@@ -201,6 +213,7 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
     # --- End-to-End Declarative Engine Tests ---
 
     def test_declarative_engine_audit_and_apply(self) -> None:
+        """Verify full targets.json declarative workflow via CLI main()."""
         skills_src = self.test_root / "src_skills"
         rules_src = self.test_root / "src_rules"
         mcp_src = self.test_root / "src_mcp.json"
@@ -239,8 +252,14 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
                             "symlink_to": str(agy_mcp_sym),
                         },
                         "json_entries": [
-                            {"target_file": str(agy_skills), "source": "skills_dir"},
-                            {"target_file": str(agy_rules), "source": "rules_dir"},
+                            {
+                                "target_file": str(agy_skills),
+                                "source": "skills_dir",
+                            },
+                            {
+                                "target_file": str(agy_rules),
+                                "source": "rules_dir",
+                            },
                         ],
                         "settings": {
                             "target_file": str(agy_settings),
@@ -291,7 +310,8 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
         # Audit single target: claude
         with (
             mock.patch(
-                "sys.argv", ["config.py", *base_args, "--target", "claude", "audit"]
+                "sys.argv",
+                ["config.py", *base_args, "--target", "claude", "audit"],
             ),
             mock.patch("sys.stdout", new_callable=io.StringIO),
             self.assertRaises(SystemExit) as cm,

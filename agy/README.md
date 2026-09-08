@@ -57,7 +57,8 @@ All source locations and agent-specific discovery requirements are declared in
 
 ### Generic Primitives
 
-The Python engine [`config.py`](file:///Users/kmassada/src/dotfiles/agy/config.py)
+The Python engine
+[`config.py`](file:///Users/kmassada/src/dotfiles/agy/config.py)
 implements generic, stateless primitives:
 
 1. **`check_mcp` / `apply_mcp`**: Merges `mcpServers` objects into target JSON
