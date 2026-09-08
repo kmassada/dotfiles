@@ -4,14 +4,15 @@ Provisioning engine and declarative configuration system for AI coding agents,
 including Google Antigravity (AGY), Gemini CLI, and Claude Code.
 
 This directory orchestrates universal agent skills, conditional rules, Model
-Context Protocol (MCP) servers, model provider configurations, and
-authentication credentials using a declarative, config-driven architecture.
+Context Protocol (MCP) servers, Homebrew casks, model provider configurations,
+and authentication credentials using a declarative, config-driven architecture.
 
 ---
 
 ## Declarative Architecture (`targets.json`)
 
-All source locations and agent-specific discovery requirements are declared in
+All source locations, Homebrew casks, and agent-specific discovery requirements
+are declared in
 [`targets.json`](file:///Users/kmassada/src/dotfiles/agy/targets.json):
 
 ```json
@@ -24,6 +25,11 @@ All source locations and agent-specific discovery requirements are declared in
   "targets": {
     "antigravity": {
       "name": "Google Antigravity & Gemini CLI",
+      "casks": [
+        "antigravity",
+        "antigravity-cli",
+        "antigravity-ide"
+      ],
       "mcp": {
         "target_file": "~/.gemini/config/mcp_config.json",
         "symlink_to": "~/.gemini/antigravity-cli/mcp_config.json"
@@ -46,6 +52,10 @@ All source locations and agent-specific discovery requirements are declared in
     },
     "claude": {
       "name": "Claude Code",
+      "casks": [
+        "claude",
+        "claude-code"
+      ],
       "skills_dir": "~/.claude/skills",
       "mcp": {
         "target_file": "~/.claude.json"
@@ -61,29 +71,31 @@ The Python engine
 [`config.py`](file:///Users/kmassada/src/dotfiles/agy/config.py)
 implements generic, stateless primitives:
 
-1. **`check_mcp` / `apply_mcp`**: Merges `mcpServers` objects into target JSON
+1. **`check_casks` / `apply_casks`**: Audits and installs tool-specific Homebrew
+   casks without polluting the base `Brewfile`.
+2. **`check_mcp` / `apply_mcp`**: Merges `mcpServers` objects into target JSON
    files without clobbering unrelated top-level keys.
-2. **`check_skill_symlinks` / `apply_skill_symlinks`**: Scans upstream skill
+3. **`check_skill_symlinks` / `apply_skill_symlinks`**: Scans upstream skill
    packages (directories with `SKILL.md`) and symlinks them into target tool
    directories without overwriting non-symlink user directories.
-3. **`check_json_entry` / `apply_json_entry`**: Idempotently registers paths
+4. **`check_json_entry` / `apply_json_entry`**: Idempotently registers paths
    into JSON registry files (`skills.json`, `rules.json`).
-4. **`check_json_key` / `apply_json_key`**: Sets or verifies top-level key-value
+5. **`check_json_key` / `apply_json_key`**: Sets or verifies top-level key-value
    pairs (`settings.json`).
-5. **`check_symlink` / `apply_symlink`**: Ensures file or directory symlinks.
+6. **`check_symlink` / `apply_symlink`**: Ensures file or directory symlinks.
 
 ---
 
 ## File Structure
 
-* **`targets.json`**: Declarative mapping of upstream sources and downstream
-  agent targets.
+* **`targets.json`**: Declarative mapping of upstream sources, target casks, and
+  downstream agent configurations.
 * **`config.py`**: Lean, zero-dependency Python engine. Complies with PEP 723
   and uses abstract typing from `collections.abc`.
 * **`test_config.py`**: Hermetic unit test suite verifying each primitive and
   the end-to-end engine against an isolated temporary directory.
 * **`setup.sh`**: Top-level shell script wrapping directory creation, upstream
-  git synchronization, agent configuration, and environment credentials.
+  git synchronization, cask installation, and agent discovery.
 
 ---
 
@@ -91,10 +103,17 @@ implements generic, stateless primitives:
 
 ### Audit Configuration
 
-Run the shell script without flags to check overall system health:
+Run the shell script without flags to check default configuration (`antigravity`
+only, ideal for work machines):
 
 ```bash
 ./agy/setup.sh
+```
+
+Audit both Antigravity and Claude Code:
+
+```bash
+./agy/setup.sh --with-claude
 ```
 
 Or run the Python engine directly to audit all targets or an individual agent:
@@ -113,13 +132,31 @@ python3 agy/config.py audit --format json
 
 ### Apply Configuration
 
-Apply missing directories, sync upstream skills, and configure discovery:
+Apply missing casks and configure discovery for Antigravity (default):
 
 ```bash
 ./agy/setup.sh --apply
 ```
 
-Or apply target configurations individually:
+Opt-in to install and configure Claude Code alongside Antigravity:
+
+```bash
+./agy/setup.sh --apply --with-claude
+```
+
+Configure Claude Code only:
+
+```bash
+./agy/setup.sh --apply --target claude
+```
+
+Skip Homebrew cask installations (e.g. in CI or lightweight environments):
+
+```bash
+./agy/setup.sh --apply --no-casks
+```
+
+Or apply target configurations directly via Python:
 
 ```bash
 python3 agy/config.py apply --target claude
@@ -151,6 +188,9 @@ to `targets.json`:
 ```json
 "cursor": {
   "name": "Cursor",
+  "casks": [
+    "cursor"
+  ],
   "mcp": {
     "target_file": "~/.cursor/mcp.json"
   }

@@ -15,6 +15,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -84,6 +86,72 @@ def save_json(file_path: Path, data: Mapping[str, Any]) -> None:
 # ------------------------------------------------------------------------------
 # 2. Generic Primitives
 # ------------------------------------------------------------------------------
+
+
+def check_cask(cask_name: str) -> bool:
+    """Check whether a Homebrew cask is installed on the system.
+
+    Args:
+        cask_name: Identifier of the Homebrew cask (e.g. 'claude-code').
+
+    Returns:
+        True if the cask is installed, False otherwise.
+
+    """
+    if not shutil.which("brew"):
+        return False
+    res = subprocess.run(
+        ["brew", "list", "--cask", cask_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return res.returncode == 0
+
+
+def check_casks(casks: Sequence[str]) -> tuple[bool, str]:
+    """Check whether all specified Homebrew casks are installed.
+
+    Args:
+        casks: Sequence of Homebrew cask identifiers.
+
+    Returns:
+        Tuple of (is_configured, status_message).
+
+    """
+    if not casks:
+        return True, "NO_CASKS"
+    if not shutil.which("brew"):
+        return False, "BREW_NOT_FOUND"
+
+    missing = [cask for cask in casks if not check_cask(cask)]
+    if missing:
+        return False, f"MISSING:{','.join(missing)}"
+    return True, "CONFIGURED"
+
+
+def apply_casks(casks: Sequence[str]) -> bool:
+    """Install any missing Homebrew casks from the specified sequence.
+
+    Args:
+        casks: Sequence of Homebrew cask identifiers to install.
+
+    Returns:
+        True if any casks were installed, False if all were already present.
+
+    """
+    if not casks or not shutil.which("brew"):
+        return False
+
+    installed_any = False
+    for cask in casks:
+        if not check_cask(cask):
+            subprocess.run(
+                ["brew", "install", "--cask", cask],
+                check=False,
+            )
+            installed_any = True
+    return installed_any
 
 
 def check_json_entry(target_file: Path, item_path: Path) -> tuple[bool, str]:
@@ -413,7 +481,10 @@ def load_targets(targets_file: Path) -> tuple[dict[str, Path], dict[str, Any]]:
 
 
 def audit_target(
-    target_id: str, target_cfg: Mapping[str, Any], sources: Mapping[str, Path]
+    target_id: str,
+    target_cfg: Mapping[str, Any],
+    sources: Mapping[str, Path],
+    no_casks: bool = False,
 ) -> dict[str, dict[str, Any]]:
     """Audit all declarative steps for a single target.
 
@@ -421,6 +492,7 @@ def audit_target(
         target_id: Identifier key for target (e.g. 'claude', 'antigravity').
         target_cfg: Mapping containing target configuration schema.
         sources: Mapping of resolved authoritative source paths.
+        no_casks: If True, skips Homebrew cask audit checks.
 
     Returns:
         Dictionary mapping step names to audit result dictionaries.
@@ -428,7 +500,25 @@ def audit_target(
     """
     results: dict[str, dict[str, Any]] = {}
 
-    # 1. MCP Configuration
+    # 1. Homebrew Casks
+    casks = target_cfg.get("casks")
+    if isinstance(casks, list):
+        if no_casks:
+            results["casks"] = {
+                "ok": True,
+                "status": "SKIPPED",
+                "target": ",".join(casks),
+            }
+        else:
+            casks_seq: Sequence[str] = [str(c) for c in casks]
+            ok, status = check_casks(casks_seq)
+            results["casks"] = {
+                "ok": ok,
+                "status": status,
+                "target": ",".join(casks_seq),
+            }
+
+    # 2. MCP Configuration
     mcp_cfg = target_cfg.get("mcp")
     if isinstance(mcp_cfg, dict) and "target_file" in mcp_cfg:
         tgt_file = expand_path(mcp_cfg["target_file"])
@@ -446,7 +536,7 @@ def audit_target(
                 "target": str(sym_path),
             }
 
-    # 2. JSON entries (e.g. skills.json, rules.json)
+    # 3. JSON entries (e.g. skills.json, rules.json)
     json_entries = target_cfg.get("json_entries")
     if isinstance(json_entries, list):
         for entry in json_entries:
@@ -463,7 +553,7 @@ def audit_target(
                         "target": str(tgt_file),
                     }
 
-    # 3. Direct skill symlinks (e.g. Claude Code ~/.claude/skills)
+    # 4. Direct skill symlinks (e.g. Claude Code ~/.claude/skills)
     if "skills_dir" in target_cfg:
         tgt_dir = expand_path(target_cfg["skills_dir"])
         src_dir = sources.get("skills_dir")
@@ -475,7 +565,7 @@ def audit_target(
                 "target": str(tgt_dir),
             }
 
-    # 4. Settings key (e.g. modelProvider: gemini)
+    # 5. Settings key (e.g. modelProvider: gemini)
     settings_cfg = target_cfg.get("settings")
     if isinstance(settings_cfg, dict) and "target_file" in settings_cfg:
         tgt_file = expand_path(settings_cfg["target_file"])
@@ -492,7 +582,10 @@ def audit_target(
 
 
 def apply_target(
-    target_id: str, target_cfg: Mapping[str, Any], sources: Mapping[str, Path]
+    target_id: str,
+    target_cfg: Mapping[str, Any],
+    sources: Mapping[str, Path],
+    no_casks: bool = False,
 ) -> dict[str, bool]:
     """Apply all declarative steps for a single target.
 
@@ -500,6 +593,7 @@ def apply_target(
         target_id: Identifier key for target.
         target_cfg: Mapping containing target configuration schema.
         sources: Mapping of resolved authoritative source paths.
+        no_casks: If True, skips Homebrew cask installations.
 
     Returns:
         Dictionary mapping step names to boolean update statuses.
@@ -507,7 +601,16 @@ def apply_target(
     """
     results: dict[str, bool] = {}
 
-    # 1. MCP Configuration
+    # 1. Homebrew Casks
+    casks = target_cfg.get("casks")
+    if isinstance(casks, list):
+        if no_casks:
+            results["casks"] = False
+        else:
+            casks_seq: Sequence[str] = [str(c) for c in casks]
+            results["casks"] = apply_casks(casks_seq)
+
+    # 2. MCP Configuration
     mcp_cfg = target_cfg.get("mcp")
     if isinstance(mcp_cfg, dict) and "target_file" in mcp_cfg:
         tgt_file = expand_path(mcp_cfg["target_file"])
@@ -520,7 +623,7 @@ def apply_target(
             sym_updated = apply_symlink(sym_path, tgt_file)
             results["mcp_symlink"] = sym_updated
 
-    # 2. JSON entries
+    # 3. JSON entries
     json_entries = target_cfg.get("json_entries")
     if isinstance(json_entries, list):
         for entry in json_entries:
@@ -534,14 +637,14 @@ def apply_target(
                         tgt_file, src_val
                     )
 
-    # 3. Direct skill symlinks
+    # 4. Direct skill symlinks
     if "skills_dir" in target_cfg:
         tgt_dir = expand_path(target_cfg["skills_dir"])
         src_dir = sources.get("skills_dir")
         if src_dir:
             results["skills_symlinks"] = apply_skill_symlinks(tgt_dir, src_dir)
 
-    # 4. Settings key
+    # 5. Settings key
     settings_cfg = target_cfg.get("settings")
     if isinstance(settings_cfg, dict) and "target_file" in settings_cfg:
         tgt_file = expand_path(settings_cfg["target_file"])
@@ -577,6 +680,12 @@ def build_parser() -> argparse.ArgumentParser:
         "-t",
         default="all",
         help="Target to filter (e.g. antigravity, claude, or all)",
+    )
+    parser.add_argument(
+        "--no-casks",
+        action="store_true",
+        default=False,
+        help="Skip checking or installing Homebrew casks",
     )
     parser.add_argument(
         "--format",
@@ -732,12 +841,13 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     sources, targets = load_targets(targets_file)
 
-    filter_target = args.target.lower()
-    selected_targets = (
-        targets
-        if filter_target in ("all", "")
-        else {k: v for k, v in targets.items() if k.lower() == filter_target}
-    )
+    target_tokens = [t.strip().lower() for t in args.target.split(",") if t.strip()]
+    if not target_tokens or "all" in target_tokens:
+        selected_targets = targets
+    else:
+        selected_targets = {
+            k: v for k, v in targets.items() if k.lower() in target_tokens
+        }
 
     if not selected_targets:
         print(f"Error: No matching target found for '{args.target}'", file=sys.stderr)
@@ -746,7 +856,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     if action == "apply":
         apply_results: dict[str, dict[str, bool]] = {}
         for t_id, t_cfg in selected_targets.items():
-            apply_results[t_id] = apply_target(t_id, t_cfg, sources)
+            apply_results[t_id] = apply_target(
+                t_id, t_cfg, sources, no_casks=args.no_casks
+            )
 
         if args.format == "json":
             print(json.dumps(apply_results, indent=2))
@@ -764,7 +876,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         all_ok = True
 
         for t_id, t_cfg in selected_targets.items():
-            t_res = audit_target(t_id, t_cfg, sources)
+            t_res = audit_target(t_id, t_cfg, sources, no_casks=args.no_casks)
             audit_results[t_id] = t_res
             for step_res in t_res.values():
                 if not step_res.get("ok", False):

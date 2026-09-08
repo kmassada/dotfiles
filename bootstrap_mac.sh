@@ -34,6 +34,7 @@ NO_SSHD=false
 NO_SETTINGS=false
 NO_WEBAPPS=false
 NO_AGY=false
+WITH_CLAUDE=false
 NO_PULL=false
 
 usage() {
@@ -47,6 +48,7 @@ Options:
   --no-settings  Skip configuring macOS preferences (Dock, Finder, Ergonomics)
   --no-webapps   Skip Progressive Web Apps setup (automatically skipped on *.internal)
   --no-agy       Skip Antigravity skills, rules, and model provider setup
+  --with-claude  Opt-in to install and configure Claude Code alongside Antigravity
   --no-ssh       Skip SSH client key setup for GitHub
   --no-sshd      Skip enabling Remote Login (SSH server)
   --no-pull      Skip git pull if dotfiles repo already exists
@@ -55,6 +57,7 @@ Options:
 Examples:
   $0                     # Full installation (CLI, GUI apps, Mac App Store, dotfiles, SSH, OS settings, Agy)
   $0 --cli-only          # Lightweight/headless setup (only CLI tools & dotfiles)
+  $0 --with-claude       # Full installation including Claude Code
   $0 --no-mas            # Install CLI & Casks, but skip Mac App Store apps
 USAGE
     exit 0
@@ -69,6 +72,7 @@ while [[ $# -gt 0 ]]; do
         --no-settings) NO_SETTINGS=true; shift ;;
         --no-webapps)  NO_WEBAPPS=true; shift ;;
         --no-agy)      NO_AGY=true; shift ;;
+        --with-claude) WITH_CLAUDE=true; shift ;;
         --no-ssh)      NO_SSH=true; shift ;;
         --no-sshd)     NO_SSHD=true; shift ;;
         --no-pull)     NO_PULL=true; shift ;;
@@ -272,8 +276,15 @@ fi
 if [ "$NO_AGY" = false ]; then
     AGY_SCRIPT="$DOTFILES_DIR/agy/setup.sh"
     if [[ -x "$AGY_SCRIPT" ]]; then
-        log_info "Configuring Antigravity agent skills, rules, and model provider..."
-        "$AGY_SCRIPT" --apply
+        log_info "Configuring AI agent environment (skills, rules, MCP, casks)..."
+        AGY_FLAGS=(--apply)
+        if [ "$WITH_CLAUDE" = true ]; then
+            AGY_FLAGS+=(--with-claude)
+        fi
+        if [ "$NO_CASKS" = true ] || [ "$CLI_ONLY" = true ]; then
+            AGY_FLAGS+=(--no-casks)
+        fi
+        "$AGY_SCRIPT" "${AGY_FLAGS[@]}"
     else
         log_warn "Antigravity setup script not found or not executable at $AGY_SCRIPT"
     fi

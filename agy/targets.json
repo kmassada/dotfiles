@@ -7,6 +7,11 @@
   "targets": {
     "antigravity": {
       "name": "Google Antigravity & Gemini CLI",
+      "casks": [
+        "antigravity",
+        "antigravity-cli",
+        "antigravity-ide"
+      ],
       "mcp": {
         "target_file": "~/.gemini/config/mcp_config.json",
         "symlink_to": "~/.gemini/antigravity-cli/mcp_config.json"
@@ -29,6 +34,10 @@
     },
     "claude": {
       "name": "Claude Code",
+      "casks": [
+        "claude",
+        "claude-code"
+      ],
       "skills_dir": "~/.claude/skills",
       "mcp": {
         "target_file": "~/.claude.json"

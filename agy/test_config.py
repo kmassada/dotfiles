@@ -12,8 +12,10 @@ isolated temporary sandbox directory.
 from __future__ import annotations
 
 import io
+import subprocess
 import tempfile
 import unittest
+from collections.abc import Sequence
 from pathlib import Path
 from unittest import mock
 
@@ -47,6 +49,51 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
         """Verify loading missing or empty JSON paths returns an empty dict."""
         loaded = config.load_json(self.test_root / "non_existent.json")
         self.assertEqual(loaded, {})
+
+    # --- Homebrew Cask Tests ---
+
+    @mock.patch("shutil.which")
+    @mock.patch("subprocess.run")
+    def test_check_and_apply_casks(
+        self, mock_run: mock.MagicMock, mock_which: mock.MagicMock
+    ) -> None:
+        """Verify checking and installing missing Homebrew casks."""
+        mock_which.return_value = "/opt/homebrew/bin/brew"
+
+        # Initially 'installed-cask' is present, 'missing-cask' is not
+        installed_casks = {"installed-cask"}
+
+        def fake_run(
+            cmd: Sequence[str], **kwargs: object
+        ) -> subprocess.CompletedProcess[bytes]:
+            if cmd[1] == "list" and cmd[2] == "--cask":
+                cask = cmd[3]
+                rc = 0 if cask in installed_casks else 1
+                return subprocess.CompletedProcess(cmd, rc)
+            elif cmd[1] == "install" and cmd[2] == "--cask":
+                cask = cmd[3]
+                installed_casks.add(cask)
+                return subprocess.CompletedProcess(cmd, 0)
+            return subprocess.CompletedProcess(cmd, 1)
+
+        mock_run.side_effect = fake_run
+
+        is_ok, status = config.check_casks(["installed-cask", "missing-cask"])
+        self.assertFalse(is_ok)
+        self.assertEqual(status, "MISSING:missing-cask")
+
+        # Apply installs missing-cask
+        updated = config.apply_casks(["installed-cask", "missing-cask"])
+        self.assertTrue(updated)
+        self.assertIn("missing-cask", installed_casks)
+
+        # Now all should be configured
+        is_ok, status = config.check_casks(["installed-cask", "missing-cask"])
+        self.assertTrue(is_ok)
+        self.assertEqual(status, "CONFIGURED")
+
+        # Second apply is an idempotent no-op
+        self.assertFalse(config.apply_casks(["installed-cask", "missing-cask"]))
 
     # --- JSON Entry Registry Tests ---
 
@@ -247,6 +294,7 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
                 "targets": {
                     "antigravity": {
                         "name": "Antigravity",
+                        "casks": ["antigravity-cli"],
                         "mcp": {
                             "target_file": str(agy_mcp),
                             "symlink_to": str(agy_mcp_sym),
@@ -269,6 +317,7 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
                     },
                     "claude": {
                         "name": "Claude Code",
+                        "casks": ["claude-code"],
                         "skills_dir": str(claude_skills),
                         "mcp": {
                             "target_file": str(claude_mcp),
@@ -278,7 +327,7 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
             },
         )
 
-        base_args = ["--targets-file", str(targets_json_path)]
+        base_args = ["--targets-file", str(targets_json_path), "--no-casks"]
 
         # Audit should fail before apply
         with (
