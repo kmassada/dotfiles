@@ -222,9 +222,17 @@ def main() -> None:
     else:
         tokens_display = f" (0/{format_tokens(max_tokens)})"
 
+    # 4. Resolve Artifact Count
+    artifacts = data.get("artifacts")
+    if isinstance(artifacts, list):
+        artifact_count = len(artifacts)
+    else:
+        artifact_count = int(data.get("artifact_count") or 0)
+
     # ANSI Colors
     CYAN = "\033[36m"
     MAGENTA = "\033[35m"
+    BLUE = "\033[38;5;75m"
     YELLOW = "\033[33m"
     GREEN = "\033[32m"
     RED = "\033[31m"
@@ -239,12 +247,13 @@ def main() -> None:
     else:
         ctx_color = GREEN
 
-    # Format: <state_icon> │ <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens)
+    # Format: <state_icon> │ <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens) │ 󰈙 <artifacts>
     print(
         f"{state_color}{state_icon}{RESET} {GRAY}│{RESET} "
         f"{CYAN}{model_badge}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
-        f"{ctx_color}󰧑 {pct_display}{tokens_display}{RESET}"
+        f"{ctx_color}󰧑 {pct_display}{tokens_display}{RESET} {GRAY}│{RESET} "
+        f"{BLUE}󰈙 {artifact_count}{RESET}"
     )
 
 
