@@ -135,7 +135,7 @@ def save_sessions(
         conf_lines.append(f"new_tab {title}")
         conf_lines.append(f"cd {cwd}")
         if conv:
-            conf_lines.append(f'launch zsh -c "agy --conversation={conv}; exec zsh"')
+            conf_lines.append(f'launch zsh -l -c "agy --conversation={conv}; exec zsh"')
         else:
             conf_lines.append("launch zsh")
         conf_lines.append("")
@@ -159,7 +159,7 @@ def save_sessions(
         if conv:
             cmd = f"agy --conversation={conv}; exec zsh"
             script_lines.append(
-                f'    kitty @ launch --type=tab --tab-title="{title}" --cwd="{cwd}" zsh -c "{cmd}"'
+                f'    kitty @ launch --type=tab --tab-title="{title}" --cwd="{cwd}" zsh -l -c "{cmd}"'
             )
         else:
             script_lines.append(
