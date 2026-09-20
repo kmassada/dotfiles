@@ -107,6 +107,14 @@ def clean_model_name(raw_name: str, effort: str | None = None) -> str:
     return name
 
 
+def resolve_state_icon(agent_state: str | None) -> tuple[str, str]:
+    """Return dynamic icon and color for current agent thinking/working state."""
+    state_lower = (agent_state or "").lower()
+    if state_lower in ("working", "thinking", "streaming", "generating", "executing", "running"):
+        return "󱥁", "\033[33m"  # Thinking mind-spark in Yellow
+    return "󰚩", "\033[36m"  # Idle robot in Cyan
+
+
 def main() -> None:
     """Process stdin JSON telemetry and print formatted statusline to stdout."""
     raw = sys.stdin.read().strip()
@@ -120,7 +128,10 @@ def main() -> None:
         print("󰚩 agy")
         return
 
-    # 1. Resolve Model
+    # 1. Resolve State & Model
+    agent_state = data.get("agent_state") or data.get("state") or data.get("status")
+    state_icon, state_color = resolve_state_icon(agent_state)
+
     model_obj = data.get("model") or {}
     effort = None
     if isinstance(model_obj, dict):
@@ -228,9 +239,9 @@ def main() -> None:
     else:
         ctx_color = GREEN
 
-    # Format: 󰚩 <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens)
+    # Format: <state_icon> <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens)
     print(
-        f"{CYAN}󰚩 {model_badge}{RESET} {GRAY}│{RESET} "
+        f"{state_color}{state_icon}{RESET} {CYAN}{model_badge}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
         f"{ctx_color}󰧑 {pct_display}{tokens_display}{RESET}"
     )
