@@ -216,6 +216,22 @@ if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
     brew bundle install "${BUNDLE_FLAGS[@]}" || log_warn "brew bundle finished with some warnings."
     log_success "Homebrew packages reconciled."
 
+    # Install Bitwarden Secrets Manager CLI (bws) if not present
+    if ! command -v bws &>/dev/null; then
+        log_info "Installing Bitwarden Secrets Manager CLI (bws)..."
+        mkdir -p "$HOME/.local/bin"
+        TMP_BWS=$(mktemp -d)
+        if curl -fsSL "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-aarch64-apple-darwin-2.1.0.zip" -o "$TMP_BWS/bws.zip" 2>/dev/null; then
+            unzip -q "$TMP_BWS/bws.zip" -d "$TMP_BWS" 2>/dev/null && install -m 755 "$TMP_BWS/bws" "$HOME/.local/bin/bws" 2>/dev/null
+            rm -rf "$TMP_BWS"
+            if command -v bws &>/dev/null; then
+                log_success "Bitwarden Secrets Manager CLI (bws) installed to ~/.local/bin/bws."
+            fi
+        else
+            rm -rf "$TMP_BWS"
+        fi
+    fi
+
     # Fix zsh compinit permissions on Homebrew share directory
     BREW_SHARE="$(brew --prefix)/share"
     if [[ -d "$BREW_SHARE" ]]; then
@@ -264,6 +280,8 @@ if [ "$NO_SETTINGS" = false ]; then
     else
         log_warn "Settings script not found or not executable at $SETTINGS_SCRIPT"
     fi
+fi
+
 # ------------------------------------------------------------------------------
 # 10. Machine Identity & Role Provisioning (Icon, Color, Server/Client Policies)
 # ------------------------------------------------------------------------------
