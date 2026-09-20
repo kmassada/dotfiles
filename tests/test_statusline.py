@@ -37,7 +37,7 @@ class TestAgyStatusline(unittest.TestCase):
         """Verify full statusline output with model, workspace, and context usage."""
         statusline.main()
         output = mock_stdout.getvalue()
-        self.assertIn("2.5-pro", output)
+        self.assertIn("gemini-2.5-pro", output)
         self.assertIn("dotfiles", output)
         self.assertIn("12%", output)
         self.assertIn("125k/1.0M", output)

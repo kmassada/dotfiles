@@ -96,19 +96,13 @@ def resolve_workspace(cwd_str: str | None = None) -> str:
 
 
 def clean_model_name(raw_name: str, effort: str | None = None) -> str:
-    """Clean model name into concise, readable badge."""
-    name = (
-        raw_name.replace("models/", "")
-        .replace("gemini-", "")
-        .replace("Gemini ", "")
-        .replace("-preview", "")
-    )
-    # Remove redundant trailing parenthesis if effort is already shown
-    if " (" in name:
-        name = name.split(" (")[0]
-    name = name.lower().replace(" ", "-")
-
-    if effort and effort.lower() not in ("none", "default"):
+    """Preserve full model name with clean formatting."""
+    name = raw_name.removeprefix("models/").strip()
+    if (
+        effort
+        and effort.lower() not in ("none", "default")
+        and f"({effort.lower()}" not in name.lower()
+    ):
         return f"{name} ({effort.lower()})"
     return name
 
