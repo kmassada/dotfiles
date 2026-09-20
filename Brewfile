@@ -13,6 +13,8 @@ brew "python@3.14"
 brew "csvtomd"
 # CLI for interacting with Doppler secrets and configuration
 brew "doppler"
+# Select default apps for documents and URL schemes on macOS
+brew "duti"
 # Modern, maintained replacement for ls
 brew "eza"
 # Command-line fuzzy finder written in Go
