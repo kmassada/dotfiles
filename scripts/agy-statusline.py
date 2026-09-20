@@ -220,7 +220,6 @@ def main() -> None:
     # ANSI Colors
     CYAN = "\033[36m"
     MAGENTA = "\033[35m"
-    PINK = "\033[38;5;213m"
     YELLOW = "\033[33m"
     GREEN = "\033[32m"
     RED = "\033[31m"
@@ -239,7 +238,7 @@ def main() -> None:
     print(
         f"{CYAN}󰚩 {model_badge}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
-        f"{PINK}󰧑{RESET} {ctx_color}{pct_display}{tokens_display}{RESET}"
+        f"{ctx_color}󰧑 {pct_display}{tokens_display}{RESET}"
     )
 
 
