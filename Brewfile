@@ -3,6 +3,8 @@ tap "mistertea/et"
 brew "asciinema"
 # Clone of cat(1) with syntax highlighting and Git integration
 brew "bat"
+# Secure and free password manager CLI
+brew "bitwarden-cli"
 # Concurrent, cache-efficient, and Dockerfile-agnostic builder toolkit
 brew "buildkit"
 # Command-line csv viewer
