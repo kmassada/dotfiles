@@ -221,7 +221,9 @@ audit_slack() {
     # Check Bitwarden
     local bw_status="Not Available"
     if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
-        bw_status="${GREEN}Bitwarden Secrets Manager (bws)${RESET}"
+        bw_status="${GREEN}Bitwarden Secrets Manager (bws - Active)${RESET}"
+    elif command -v bws &>/dev/null; then
+        bw_status="${YELLOW}bws installed (Needs BWS_ACCESS_TOKEN in machine.env)${RESET}"
     elif command -v bw &>/dev/null; then
         if bw status 2>/dev/null | grep -q "unlocked"; then
             bw_status="${GREEN}Bitwarden CLI (Unlocked)${RESET}"
@@ -289,7 +291,7 @@ apply_slack() {
             local current_auth
             current_auth="$(probe_slack_auth "$current_token")"
             if [[ "$current_auth" == OK* ]]; then
-                IFS="|" read -r _ c_team c_team_id c_bot c_url <<< "$current_auth"
+                IFS="|" read -r _ c_team c_team_id _ _ <<< "$current_auth"
                 echo "Found active token for workspace: ${BOLD}$c_team${RESET} (Team ID: $c_team_id)"
                 read -r -p "Keep existing token? [Y/n]: " keep_existing
                 if [[ ! "$keep_existing" =~ ^[Nn] ]]; then

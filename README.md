@@ -292,6 +292,40 @@ Run the unified setup helper to audit or configure roles:
   * **Remote Login (SSH):** Ensures `sshd` is running on port 22 and prints
         local connection strings.
 
+### Secrets Management with Bitwarden Secrets Manager (`bws`)
+
+Bitwarden Secrets Manager (`bws`) provides headless, non-interactive secret
+injection for scripts, agents, and MCP servers without prompting for master
+passwords or personal vault logins.
+
+#### One-Time Setup Workflow
+
+* **Step 1 (Open Console):** Open the
+  [Bitwarden Secrets Manager Console](https://vault.bitwarden.com/#/sm).
+* **Step 2 (Create Project):** Create a project (e.g. `Developer-Env`) and add
+  your secrets (e.g. `SLACK_BOT_TOKEN`, `GEMINI_API_KEY`).
+* **Step 3 (Machine Account):** Navigate to **Machine Accounts**, create an
+  account for this machine, and grant read access to the project.
+* **Step 4 (Access Token):** Generate a **Machine Access Token** and save it in
+  `~/.config/dotfiles/machine.env`:
+
+```bash
+# ~/.config/dotfiles/machine.env
+export BWS_ACCESS_TOKEN="0.xxxxxxxx..."
+```
+
+* **Step 5 (Automation):** Once configured, dotfile scripts (like
+  `setup-slack.sh`) and AI tools retrieve secrets directly without interactive
+  prompts:
+
+```bash
+# Verify secret resolution
+bws secret get <SECRET_UUID>
+
+# Update bws to the latest release anytime
+update_bws
+```
+
 ## ⚙️ Maintenance & Helpers
 
 ### Download Helper Scripts
