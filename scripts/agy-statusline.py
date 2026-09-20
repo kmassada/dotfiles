@@ -6,13 +6,16 @@
 """Antigravity CLI (agy) Custom Status Line Engine.
 
 Reads session and model telemetry JSON payload from stdin and renders a clean,
-informative status line with model name, context window percentage, and token stats.
+informative status line with model name, git workspace/branch, and context window telemetry.
 """
 
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -25,6 +28,37 @@ def format_tokens(num: int) -> str:
         val = num / 1_000
         return f"{val:.1f}k" if val < 10 else f"{round(val)}k"
     return str(num)
+
+
+def resolve_workspace(cwd_str: str | None = None) -> str:
+    """Resolve the git repository name and branch, or directory basename."""
+    target_dir = Path(cwd_str).resolve() if cwd_str else Path.cwd()
+
+    # Try Git resolution
+    try:
+        git_root = subprocess.check_output(
+            ["git", "-C", str(target_dir), "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        if git_root:
+            repo_name = Path(git_root).name
+            branch = subprocess.check_output(
+                ["git", "-C", str(target_dir), "branch", "--show-current"],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+            if branch:
+                return f" {repo_name} ({branch})"
+            return f" {repo_name}"
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        pass
+
+    # Fallback to directory name
+    home = Path.home()
+    if target_dir == home:
+        return "📁 ~"
+    return f"📁 {target_dir.name}"
 
 
 def main() -> None:
@@ -62,7 +96,15 @@ def main() -> None:
     if not model_clean:
         model_clean = "gemini"
 
-    # 2. Resolve Context Window & Token Usage
+    # 2. Resolve Workspace / Git
+    workspace_data = data.get("workspace") or data.get("cwd") or os.getcwd()
+    if isinstance(workspace_data, dict):
+        cwd_path = workspace_data.get("path") or workspace_data.get("root_dir")
+    else:
+        cwd_path = str(workspace_data)
+    workspace_display = resolve_workspace(cwd_path)
+
+    # 3. Resolve Context Window & Token Usage
     ctx = data.get("context_window") or data.get("context") or {}
     if not isinstance(ctx, dict):
         ctx = {}
@@ -85,7 +127,7 @@ def main() -> None:
     if percent is None and max_tokens > 0 and used_tokens > 0:
         percent = (used_tokens / max_tokens) * 100
 
-    # 3. Format Output
+    # Format Output Components
     if percent is not None:
         pct_display = f"{percent:.1f}%" if percent < 10 else f"{round(percent)}%"
     else:
@@ -98,6 +140,7 @@ def main() -> None:
 
     # ANSI Colors
     CYAN = "\033[36m"
+    MAGENTA = "\033[35m"
     YELLOW = "\033[33m"
     GREEN = "\033[32m"
     RED = "\033[31m"
@@ -113,9 +156,11 @@ def main() -> None:
     else:
         ctx_color = GREEN
 
-    # Format: 󰚩 <model> │ 🧠 <pct>% (tokens)
+    # Format: 󰚩 <model> │  <repo> (<branch>) │ 🧠 <pct>% (tokens)
     print(
-        f"{CYAN}󰚩 {model_clean}{RESET} {GRAY}│{RESET} {ctx_color}🧠 {pct_display}{tokens_display}{RESET}"
+        f"{CYAN}󰚩 {model_clean}{RESET} {GRAY}│{RESET} "
+        f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
+        f"{ctx_color}🧠 {pct_display}{tokens_display}{RESET}"
     )
 
 
