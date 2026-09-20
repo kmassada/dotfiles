@@ -239,9 +239,10 @@ def main() -> None:
     else:
         ctx_color = GREEN
 
-    # Format: <state_icon> <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens)
+    # Format: <state_icon> │ <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens)
     print(
-        f"{state_color}{state_icon}{RESET} {CYAN}{model_badge}{RESET} {GRAY}│{RESET} "
+        f"{state_color}{state_icon}{RESET} {GRAY}│{RESET} "
+        f"{CYAN}{model_badge}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
         f"{ctx_color}󰧑 {pct_display}{tokens_display}{RESET}"
     )
