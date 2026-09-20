@@ -114,7 +114,7 @@
   local _m_color="${MACHINE_ICON_COLOR:-white}"
   local _m_suffix=""
   if [[ -n "$_m_icon" ]]; then
-    _m_suffix=" %F{${_m_color}}${_m_icon}%F{$grey}"
+    _m_suffix="  %F{${_m_color}}${_m_icon}%F{$grey} "
   fi
 
   # Magenta prompt symbol if the last command succeeded.
@@ -143,8 +143,8 @@
   typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$grey}%n@%m${_m_suffix}%f"
   # Context format when not root: user@host [machine_icon].
   typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$grey}%n@%m${_m_suffix}%f"
-  # Show context always.
-  typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION='%n@%m'
+  # Show context always with machine icon suffix.
+  typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION="%n@%m${_m_suffix}"
   typeset -g POWERLEVEL9K_CONTEXT_SUDO_CONTENT_EXPANSION=
 
   # Show previous command duration only if it's >= 5s.
