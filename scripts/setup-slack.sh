@@ -87,6 +87,12 @@ if [ "$COPY_MANIFEST" = true ]; then
     fi
 fi
 
+# Load Bitwarden credentials if available
+if [ -f "$HOME/.local/bw_key.zsh" ]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.local/bw_key.zsh" 2>/dev/null || true
+fi
+
 # Load existing credentials if available
 if [ -f "$AUTH_FILE" ] && [ "$NO_DISK" = false ]; then
     # shellcheck disable=SC1090
@@ -109,7 +115,31 @@ get_active_token() {
     # 3. Bitwarden Secrets Manager (bws)
     if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
         local bws_val
-        bws_val="$(bws secret get "SLACK_BOT_TOKEN" 2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin).get('value', ''))" 2>/dev/null || true)"
+        bws_val="$(python3 -c '
+import subprocess, json, os
+proj = os.environ.get("BWS_PROJECT_ID")
+cmd = ["bws", "secret", "list"] + ([proj] if proj else [])
+try:
+    res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if res.returncode == 0 and res.stdout.strip():
+        secrets = json.loads(res.stdout)
+        for s in secrets:
+            if s.get("key") in ("slack_agents", "slack", "SLACK_BOT_TOKEN"):
+                val = s.get("value", "")
+                try:
+                    data = json.loads(val)
+                    if isinstance(data, dict):
+                        for k in ("bot_token", "SLACK_BOT_TOKEN", "token"):
+                            if data.get(k):
+                                print(data[k])
+                                exit(0)
+                except json.JSONDecodeError:
+                    if s.get("key") == "SLACK_BOT_TOKEN":
+                        print(val)
+                        exit(0)
+except Exception:
+    pass
+' 2>/dev/null || true)"
         if [[ -n "$bws_val" ]]; then
             echo "$bws_val"
             return 0
