@@ -303,6 +303,31 @@ chmod +x download_scripts.sh
 ./download_scripts.sh
 ```
 
+### Google Workspace CLI & Cloud Bootstrap (`gws`)
+
+Audit or provision Google Workspace GCP projects, enable APIs, and configure
+OAuth credentials and Doppler secrets:
+
+```bash
+# Audit current gws, GCP project, and authentication state
+~/src/dotfiles/scripts/setup-gws.sh
+
+# Interactive GCP project creation, API enablement, and OAuth credential setup
+~/src/dotfiles/scripts/setup-gws.sh --apply
+```
+
+### Slack Workspace & Bot Bootstrap
+
+Audit or provision Slack bot tokens, workspace identities, and Doppler sync:
+
+```bash
+# Audit Slack workspace token status
+~/src/dotfiles/scripts/setup-slack.sh
+
+# Interactive Slack bot token setup and validation
+~/src/dotfiles/scripts/setup-slack.sh --apply
+```
+
 ### Keeping Homebrew Synced (macOS)
 
 To track changes to your Homebrew installations and update your `Brewfile`:
