@@ -117,10 +117,10 @@ if [ "$APPLY" = true ]; then
     mkdir -p "$LOCAL_DIR"
     log_success "Directories verified (~/.gemini/config, ~/.agents/skills, ~/.agents/rules, ~/.agents/mcp, ~/.local)"
 else
-    [ -d "$CONFIG_DIR" ] && log_success "Config directory exists: $CONFIG_DIR" || log_warn "Missing config directory: $CONFIG_DIR"
-    [ -d "$SKILLS_DIR" ] && log_success "Skills directory exists: $SKILLS_DIR" || log_warn "Missing skills directory: $SKILLS_DIR"
-    [ -d "$RULES_DIR" ]  && log_success "Rules directory exists:  $RULES_DIR"  || log_warn "Missing rules directory:  $RULES_DIR"
-    [ -d "$MCP_DIR" ]    && log_success "MCP directory exists:    $MCP_DIR"    || log_warn "Missing MCP directory:    $MCP_DIR"
+    if [ -d "$CONFIG_DIR" ]; then log_success "Config directory exists: $CONFIG_DIR"; else log_warn "Missing config directory: $CONFIG_DIR"; fi
+    if [ -d "$SKILLS_DIR" ]; then log_success "Skills directory exists: $SKILLS_DIR"; else log_warn "Missing skills directory: $SKILLS_DIR"; fi
+    if [ -d "$RULES_DIR" ];  then log_success "Rules directory exists:  $RULES_DIR";  else log_warn "Missing rules directory:  $RULES_DIR"; fi
+    if [ -d "$MCP_DIR" ];    then log_success "MCP directory exists:    $MCP_DIR";    else log_warn "Missing MCP directory:    $MCP_DIR"; fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ if [ "$APPLY" = true ]; then
             if [ -d "$item" ] && [ -f "$item/SKILL.md" ]; then
                 skill_name=$(basename "$item")
                 # Remove existing symlink or old directory if present
-                rm -rf "$SKILLS_DIR/$skill_name"
+                rm -rf "${SKILLS_DIR:?}/${skill_name:?}"
                 cp -R "$item" "$SKILLS_DIR/$skill_name"
                 SKILL_COUNT=$((SKILL_COUNT + 1))
             fi
@@ -299,6 +299,12 @@ if target_enabled "antigravity"; then
         mkdir -p "$HOME/.gemini/antigravity-cli"
         ln -sfn "$CONFIG_DIR/mcp_config.json" "$HOME/.gemini/antigravity-cli/mcp_config.json"
         log_success "Linked mcp_config.json to ~/.gemini/antigravity-cli/mcp_config.json"
+
+        # Antigravity CLI statusline
+        if [ -f "$SCRIPT_DIR/../scripts/agy-statusline.sh" ]; then
+            ln -sfn "$SCRIPT_DIR/../scripts/agy-statusline.sh" "$HOME/.gemini/antigravity-cli/statusline.sh"
+            log_success "Linked statusline.sh to ~/.gemini/antigravity-cli/statusline.sh"
+        fi
     else
         if python3 "$PY_ENGINE" check-mcp --mcp-source "$MCP_SRC" &>/dev/null; then
             log_success "mcp_config.json is properly configured"
