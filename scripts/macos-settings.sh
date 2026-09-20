@@ -104,6 +104,7 @@ format_val() {
     fi
     if [[ "$key" == "InitialKeyRepeat" ]]; then
         case "$val" in
+            20) echo "20 (balanced)" ;;
             15) echo "15 (short)" ;;
             10) echo "10 (ultra-short)" ;;
             "<unset>") echo "default (25)" ;;
@@ -201,7 +202,8 @@ show_discovery() {
     check_item "Sound"    "Volume Feedback Beep"     "false"       "NSGlobalDomain"          "com.apple.sound.beep.feedback"
     check_item "Sound"    "UI Sound Effects"         "false"       "com.apple.systemsound"   "com.apple.sound.uiaudio.enabled"
     check_item "Keyboard" "Key Repeat Rate"          "1 (fastest)" "NSGlobalDomain"          "KeyRepeat"
-    check_item "Keyboard" "Delay Until Repeat"       "15 (short)"  "NSGlobalDomain"          "InitialKeyRepeat"
+    check_item "Keyboard" "Delay Until Repeat"       "20 (balanced)" "NSGlobalDomain"        "InitialKeyRepeat"
+    check_item "Keyboard" "Accent Menu on Hold"      "false"       "NSGlobalDomain"          "ApplePressAndHoldEnabled"
     check_item "Keyboard" "Disable Ctrl+Space Input Sw" "disabled" "com.apple.symbolichotkeys" "60"
     check_item "Keyboard" "Disable Ctrl+Opt+Space Sw"   "disabled" "com.apple.symbolichotkeys" "61"
     check_item "Trackpad" "Tap to Click"             "true"        "com.apple.AppleMultitouchTrackpad" "Clicking"
@@ -325,8 +327,11 @@ apply_settings() {
     echo "  → Keyboard: Set key repeat rate to fast (1)"
     defaults write NSGlobalDomain KeyRepeat -int 1
 
-    echo "  → Keyboard: Set initial key repeat delay to short (15)"
-    defaults write NSGlobalDomain InitialKeyRepeat -int 15
+    echo "  → Keyboard: Set initial key repeat delay to balanced (20)"
+    defaults write NSGlobalDomain InitialKeyRepeat -int 20
+
+    echo "  → Keyboard: Disable press-and-hold accent menu (enables key repeat in browsers/apps)"
+    defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
 
     echo "  → Keyboard: Disable Ctrl+Space input source switcher (prevents Tmux prefix conflict)"
     defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 60 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>262144</integer></array><key>type</key><string>standard</string></dict></dict>"
