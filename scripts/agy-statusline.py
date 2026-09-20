@@ -227,9 +227,9 @@ def main() -> None:
     GRAY = "\033[90m"
 
     # Context color coding based on threshold
-    if pct_val >= 80.0:
+    if pct_val >= 30.0:
         ctx_color = RED
-    elif pct_val >= 50.0:
+    elif pct_val >= 20.0:
         ctx_color = YELLOW
     else:
         ctx_color = GREEN
