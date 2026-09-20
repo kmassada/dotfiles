@@ -124,13 +124,13 @@
 
   # Prompt symbols with custom machine icon while preserving native ❯ status coloring
   if [[ -n "$_m_icon" ]]; then
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}%F{${yellow}} ❯"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VICMD_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}%F{${yellow}} ❮"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VIVIS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}%F{${yellow}} ❮"
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${yellow}}❯"
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VICMD_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${yellow}}❮"
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VIVIS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${yellow}}❮"
 
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VIINS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}%F{${red}} ❯"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VICMD_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}%F{${red}} ❮"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VIVIS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}%F{${red}} ❮"
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VIINS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${red}}❯"
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VICMD_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${red}}❮"
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VIVIS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${red}}❮"
   else
     typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
     typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='❮'
