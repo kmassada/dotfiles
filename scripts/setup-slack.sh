@@ -3,17 +3,18 @@
 # ==============================================================================
 # setup-slack.sh - Repeatable Slack Workspace & Bot Credential Engine
 # ==============================================================================
-# Bootstraps, audits, and manages Slack credentials for AI agents and MCP:
-#   1. Validates Slack bot tokens (xoxb-...) against the Slack API
-#   2. Auto-discovers workspace name, team ID, and bot identity via auth.test
-#   3. Securely persists credentials to ~/.local/slack_auth.zsh (auto-sourced)
-#   4. Syncs secrets to Doppler CLI if authenticated
+# Bootstraps, audits, and manages Slack credentials across multi-backend vaults:
+#   1. Resolves tokens from Bitwarden, GCP Secret Manager, Doppler, or memory
+#   2. Validates Slack bot tokens (xoxb-...) against the Slack API (auth.test)
+#   3. Auto-discovers workspace name, team ID, and bot identity
+#   4. Injects tokens into runtime environment (launchctl, Doppler, Bitwarden)
 #   5. Verifies MCP configuration in ~/.gemini/config/mcp_config.json
 #
 # Usage:
-#   ./setup-slack.sh                  # Audit current Slack credentials and status
+#   ./setup-slack.sh                  # Audit current multi-backend credential status
 #   ./setup-slack.sh --apply          # Configure or update Slack credentials
 #   ./setup-slack.sh --token xoxb-... # Set token directly from CLI
+#   ./setup-slack.sh --no-disk        # Zero-disk mode (do not write ~/.local file)
 #   ./setup-slack.sh --copy-manifest  # Copy Slack App Manifest JSON to clipboard
 # ==============================================================================
 
@@ -39,6 +40,7 @@ MCP_CONFIG="$HOME/.gemini/config/mcp_config.json"
 
 APPLY=false
 CLI_TOKEN=""
+NO_DISK=false
 COPY_MANIFEST=false
 
 usage() {
@@ -48,6 +50,7 @@ ${BOLD}Usage:${RESET} $0 [OPTIONS]
 ${BOLD}Options:${RESET}
   --apply               Guide interactive setup and save credentials
   --token <xoxb-...>    Provide Slack Bot Token directly
+  --no-disk             Do not write plaintext ~/.local/slack_auth.zsh file
   --copy-manifest       Copy slack-manifest.json to macOS clipboard and exit
   -h, --help            Show this help message
 
@@ -55,6 +58,7 @@ ${BOLD}Examples:${RESET}
   $0                    # Audit current configuration & token validity
   $0 --apply            # Interactive setup / refresh
   $0 --token "xoxb-..." # Configure non-interactively with a token
+  $0 --apply --no-disk  # Zero-disk mode (in-memory & vault only)
 USAGE
     exit 0
 }
@@ -63,6 +67,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --apply)           APPLY=true; shift ;;
         --token)           CLI_TOKEN="$2"; APPLY=true; shift 2 ;;
+        --no-disk)         NO_DISK=true; shift ;;
         --copy-manifest)   COPY_MANIFEST=true; shift ;;
         -h|--help)         usage ;;
         *)                 log_error "Unknown option: $1"; usage ;;
@@ -83,21 +88,65 @@ if [ "$COPY_MANIFEST" = true ]; then
 fi
 
 # Load existing credentials if available
-if [ -f "$AUTH_FILE" ]; then
+if [ -f "$AUTH_FILE" ] && [ "$NO_DISK" = false ]; then
     # shellcheck disable=SC1090
     source "$AUTH_FILE" 2>/dev/null || true
 fi
 
 get_active_token() {
+    # 1. CLI argument
     if [[ -n "$CLI_TOKEN" ]]; then
         echo "$CLI_TOKEN"
-    elif [[ -n "$SLACK_BOT_TOKEN" ]]; then
-        echo "$SLACK_BOT_TOKEN"
-    elif command -v doppler &>/dev/null && doppler secrets get SLACK_BOT_TOKEN --plain 2>/dev/null; then
         return 0
-    else
-        echo ""
     fi
+
+    # 2. Process Environment
+    if [[ -n "$SLACK_BOT_TOKEN" ]]; then
+        echo "$SLACK_BOT_TOKEN"
+        return 0
+    fi
+
+    # 3. Bitwarden Secrets Manager (bws)
+    if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
+        local bws_val
+        bws_val="$(bws secret get "SLACK_BOT_TOKEN" 2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin).get('value', ''))" 2>/dev/null || true)"
+        if [[ -n "$bws_val" ]]; then
+            echo "$bws_val"
+            return 0
+        fi
+    fi
+
+    # 4. Bitwarden CLI (bw)
+    if command -v bw &>/dev/null; then
+        local bw_val
+        bw_val="$(bw get password "SLACK_BOT_TOKEN" 2>/dev/null || bw get notes "SLACK_BOT_TOKEN" 2>/dev/null || true)"
+        if [[ -n "$bw_val" ]]; then
+            echo "$bw_val"
+            return 0
+        fi
+    fi
+
+    # 5. Google Cloud Secret Manager (gcloud)
+    if command -v gcloud &>/dev/null; then
+        local gcp_val
+        gcp_val="$(gcloud secrets versions access latest --secret="SLACK_BOT_TOKEN" 2>/dev/null || true)"
+        if [[ -n "$gcp_val" ]]; then
+            echo "$gcp_val"
+            return 0
+        fi
+    fi
+
+    # 6. Doppler CLI
+    if command -v doppler &>/dev/null; then
+        local dop_val
+        dop_val="$(doppler secrets get SLACK_BOT_TOKEN --plain 2>/dev/null || true)"
+        if [[ -n "$dop_val" ]]; then
+            echo "$dop_val"
+            return 0
+        fi
+    fi
+
+    echo ""
 }
 
 probe_slack_auth() {
@@ -132,7 +181,7 @@ except Exception:
 
 audit_slack() {
     echo ""
-    echo "${BOLD}${CYAN}🔍 Slack MCP & Workspace Credential Audit${RESET}"
+    echo "${BOLD}${CYAN}🔍 Multi-Backend Slack Credential & MCP Audit${RESET}"
     echo "----------------------------------------------------------------------"
 
     local current_token
@@ -161,7 +210,39 @@ audit_slack() {
     printf "%-24s: %b\n" "Workspace Name" "$team_display"
     printf "%-24s: %s\n" "Team ID" "$team_id_display"
     printf "%-24s: %s\n" "Bot Identity" "$bot_display"
-    printf "%-24s: %s\n" "Local Auth File" "$AUTH_FILE"
+
+    # Check Local Auth File
+    local file_status="${YELLOW}Not Present${RESET}"
+    if [[ -f "$AUTH_FILE" ]]; then
+        file_status="${GREEN}Present ($AUTH_FILE)${RESET}"
+    fi
+    printf "%-24s: %b\n" "Local Auth File" "$file_status"
+
+    # Check Bitwarden
+    local bw_status="Not Available"
+    if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
+        bw_status="${GREEN}Bitwarden Secrets Manager (bws)${RESET}"
+    elif command -v bw &>/dev/null; then
+        if bw status 2>/dev/null | grep -q "unlocked"; then
+            bw_status="${GREEN}Bitwarden CLI (Unlocked)${RESET}"
+        else
+            bw_status="${YELLOW}Bitwarden CLI (Locked / Session Needed)${RESET}"
+        fi
+    fi
+    printf "%-24s: %b\n" "Bitwarden Vault" "$bw_status"
+
+    # Check Google Cloud Secret Manager
+    local gcp_status="Not Available"
+    if command -v gcloud &>/dev/null; then
+        local gcp_proj
+        gcp_proj="$(gcloud config get-value project 2>/dev/null || true)"
+        if [[ -n "$gcp_proj" && "$gcp_proj" != "(unset)" ]]; then
+            gcp_status="${GREEN}gcloud active (Project: $gcp_proj)${RESET}"
+        else
+            gcp_status="${YELLOW}gcloud installed (No active project)${RESET}"
+        fi
+    fi
+    printf "%-24s: %b\n" "GCP Secret Manager" "$gcp_status"
 
     # Check Doppler
     local doppler_status="Not Configured"
@@ -172,7 +253,7 @@ audit_slack() {
             doppler_status="${YELLOW}Installed (Not logged in)${RESET}"
         fi
     fi
-    printf "%-24s: %b\n" "Doppler CLI" "$doppler_status"
+    printf "%-24s: %b\n" "Doppler Keyring" "$doppler_status"
 
     # Check MCP config
     local mcp_status="${RED}Missing${RESET}"
@@ -276,9 +357,10 @@ apply_slack() {
     echo "  • URL:       $team_url"
     echo ""
 
-    # 1. Save to ~/.local/slack_auth.zsh
-    mkdir -p "$(dirname "$AUTH_FILE")"
-    cat << EOF2 > "$AUTH_FILE"
+    # 1. Save to ~/.local/slack_auth.zsh unless --no-disk
+    if [ "$NO_DISK" = false ]; then
+        mkdir -p "$(dirname "$AUTH_FILE")"
+        cat << EOF2 > "$AUTH_FILE"
 # ==============================================================================
 # slack_auth.zsh - Slack Credentials for Antigravity & MCP
 # Auto-generated by setup-slack.sh on $(date)
@@ -288,17 +370,21 @@ export SLACK_TEAM_ID="$team_id"
 export SLACK_WORKSPACE_NAME="$team_name"
 export SLACK_WORKSPACE_URL="$team_url"
 EOF2
-    chmod 600 "$AUTH_FILE"
-    log_success "Saved credentials to $AUTH_FILE (mode 0600)"
-    echo "  (Automatically loaded by ~/.zshrc for interactive shells)"
+        chmod 600 "$AUTH_FILE"
+        log_success "Saved credentials to $AUTH_FILE (mode 0600)"
+        echo "  (Automatically loaded by ~/.zshrc for interactive shells)"
+    else
+        log_info "Zero-Disk mode enabled: skipped writing $AUTH_FILE"
+    fi
 
+    # 2. Update macOS session environment
     if command -v launchctl &>/dev/null; then
         launchctl setenv SLACK_BOT_TOKEN "$token"
         launchctl setenv SLACK_TEAM_ID "$team_id"
         log_success "Updated macOS launchctl environment variables"
     fi
 
-    # 2. Sync to Doppler if logged in
+    # 3. Sync to Doppler if logged in
     if command -v doppler &>/dev/null && doppler me &>/dev/null; then
         log_info "Syncing credentials to Doppler..."
         if doppler configure get project &>/dev/null; then
@@ -309,7 +395,7 @@ EOF2
         fi
     fi
 
-    # 3. Ensure ~/.gemini/config/mcp_config.json has Slack MCP configured
+    # 4. Ensure ~/.gemini/config/mcp_config.json has Slack MCP configured
     if [[ -f "$MCP_CONFIG" ]]; then
         log_success "MCP configuration verified at $MCP_CONFIG"
     fi
