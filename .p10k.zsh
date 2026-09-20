@@ -112,30 +112,21 @@
   fi
 
   local _m_color="${MACHINE_ICON_COLOR:-white}"
-  local _m_prefix=""
+  local _m_suffix=""
   if [[ -n "$_m_icon" ]]; then
-    _m_prefix="%F{${_m_color}}${_m_icon}%f "
+    _m_suffix=" %F{${_m_color}}${_m_icon}%F{$grey}"
   fi
 
   # Magenta prompt symbol if the last command succeeded.
   typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS}_FOREGROUND=$yellow
   # Red prompt symbol if the last command failed.
   typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS}_FOREGROUND=$red
-
-  # Prompt symbols with custom machine icon while preserving native ❯ status coloring
-  if [[ -n "$_m_icon" ]]; then
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${yellow}}❯"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VICMD_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${yellow}}❮"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_VIVIS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${yellow}}❮"
-
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VIINS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${red}}❯"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VICMD_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${red}}❮"
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_VIVIS_CONTENT_EXPANSION="%F{${_m_color}}${_m_icon}  %F{${red}}❮"
-  else
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='❮'
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIVIS_CONTENT_EXPANSION='❮'
-  fi
+  # Default prompt symbol.
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
+  # Prompt symbol in command vi mode.
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='❮'
+  # Prompt symbol in visual vi mode is the same as in command mode.
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIVIS_CONTENT_EXPANSION='❮'
   # Prompt symbol in overwrite vi mode is the same as in command mode.
   typeset -g POWERLEVEL9K_PROMPT_CHAR_OVERWRITE_STATE=false
 
@@ -148,10 +139,10 @@
   # Blue current directory.
   typeset -g POWERLEVEL9K_DIR_FOREGROUND=$blue
 
-  # Context format when root: user@host.
-  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$grey}%n@%m%f"
-  # Context format when not root: user@host.
-  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$grey}%n@%m%f"
+  # Context format when root: user@host [machine_icon].
+  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$grey}%n@%m${_m_suffix}%f"
+  # Context format when not root: user@host [machine_icon].
+  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$grey}%n@%m${_m_suffix}%f"
   # Show context always.
   typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION='%n@%m'
   typeset -g POWERLEVEL9K_CONTEXT_SUDO_CONTENT_EXPANSION=

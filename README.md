@@ -233,14 +233,15 @@ MACHINE_ROLE="client"             # "client" (laptop) or "server" (always-on)
 
 The prompt displays two distinct tiers of indicators:
 
-* **Line 1 (OS Indicator):** Preserves the operating system glyph (`` on
+* **Line 1 Left (OS Indicator):** Preserves the operating system glyph (`` on
     macOS, `` on Linux).
-* **Line 2 (Machine Icon):** Injects your custom colored icon right before
-    the `❯` prompt symbol:
+* **Line 1 Right (Machine Icon):** Injects your custom colored icon directly
+    after the hostname (`user@host <icon>`).
+* **Line 2 (Prompt Character):** Retains a clean, uncluttered `❯` prompt symbol:
 
 ```text
- ~/src/dotfiles main ⇡                  kmassada@Kenneths-MacBook-Air 11:14 AM
-󰌢 ❯ 
+ ~/src/dotfiles main ⇡                kmassada@Kenneths-MacBook-Air 󰌢 11:14 AM
+❯ 
 ```
 
 ### Available Icon Names & Mappings
