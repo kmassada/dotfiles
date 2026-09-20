@@ -49,7 +49,7 @@ done
 WEBAPPS=(
     "Gmail|https://mail.google.com"
     "Google Keep|https://keep.google.com"
-    "NotebookLM|https://notebooklm.google/"
+    "Gemini Notebook|https://notebook.google.com/"
 )
 
 is_internal_host() {
@@ -98,16 +98,30 @@ show_discovery() {
             status="${YELLOW}Waiting for Chrome sync${RESET}"
         fi
 
+        # Clean up legacy NotebookLM symlink in ~/Applications if transitioning
+        if [[ "$name" == "Gemini Notebook" && -L "$HOME/Applications/NotebookLM.app" ]]; then
+            rm -f "$HOME/Applications/NotebookLM.app"
+        fi
+
         # Check if Chrome App Shim exists
-        if [[ -d "$CHROME_APPS_DIR/$name.app" ]] || [[ "$name" == "NotebookLM" && -d "$CHROME_APPS_DIR/https:::notebooklm.google:.app" ]]; then
+        local shim_path=""
+        if [[ -d "$CHROME_APPS_DIR/$name.app" ]]; then
+            shim_path="$CHROME_APPS_DIR/$name.app"
+        elif [[ "$name" == "Gemini Notebook" ]]; then
+            if [[ -d "$CHROME_APPS_DIR/https:::notebook.google.com:.app" ]]; then
+                shim_path="$CHROME_APPS_DIR/https:::notebook.google.com:.app"
+            elif [[ -d "$CHROME_APPS_DIR/https:::notebooklm.google:.app" ]]; then
+                shim_path="$CHROME_APPS_DIR/https:::notebooklm.google:.app"
+            elif [[ -d "$CHROME_APPS_DIR/NotebookLM.app" ]]; then
+                shim_path="$CHROME_APPS_DIR/NotebookLM.app"
+            fi
+        fi
+
+        if [[ -n "$shim_path" ]]; then
             status="${GREEN}Installed (Official Shim)${RESET}"
             # Ensure accessible from ~/Applications for Spotlight/Raycast
             mkdir -p "$HOME/Applications"
-            if [[ "$name" == "NotebookLM" && -d "$CHROME_APPS_DIR/https:::notebooklm.google:.app" && ! -d "$CHROME_APPS_DIR/NotebookLM.app" ]]; then
-                ln -sf "$CHROME_APPS_DIR/https:::notebooklm.google:.app" "$HOME/Applications/NotebookLM.app"
-            else
-                ln -sf "$CHROME_APPS_DIR/$name.app" "$HOME/Applications/$name.app"
-            fi
+            ln -sf "$shim_path" "$HOME/Applications/$name.app"
         fi
 
         printf "  • %-20s %-32s %-20b\n" "$name" "$url" "$status"
@@ -124,21 +138,16 @@ apply_settings() {
     fi
 
     echo "${BOLD}${GREEN}⚙️  Configuring Web Applications Policy...${RESET}"
-
-    if is_profile_installed; then
-        echo "  → Configuration Profile is already installed."
-    else
-        echo "  → Staging Configuration Profile: $PROFILE_PATH"
-        open "$PROFILE_PATH"
-        sleep 0.5
-        open "x-apple.systempreferences:com.apple.Profiles-Settings.extension" 2>/dev/null || true
-        echo ""
-        echo "  ${BOLD}${YELLOW}👉 Action Required in System Settings:${RESET}"
-        echo "     1. Look under 'Downloaded' in the Profiles window that just opened."
-        echo "     2. Double-click ${BOLD}Google Chrome Web Applications${RESET} and click ${BOLD}Install...${RESET}"
-        echo "     3. Restart Chrome (or visit chrome://policy and click 'Reload policies')."
-        echo ""
-    fi
+    echo "  → Staging Configuration Profile: $PROFILE_PATH"
+    open "$PROFILE_PATH"
+    sleep 0.5
+    open "x-apple.systempreferences:com.apple.Profiles-Settings.extension" 2>/dev/null || true
+    echo ""
+    echo "  ${BOLD}${YELLOW}👉 Action Required in System Settings:${RESET}"
+    echo "     1. Look under 'Downloaded' in Profiles Settings."
+    echo "     2. Double-click ${BOLD}Google Chrome Web Applications${RESET} and click ${BOLD}Update...${RESET} or ${BOLD}Install...${RESET}"
+    echo "     3. Restart Chrome (or visit chrome://policy and click 'Reload policies')."
+    echo ""
 }
 
 show_discovery

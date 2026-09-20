@@ -16,9 +16,9 @@
 			<key>PayloadType</key>
 			<string>com.google.Chrome</string>
 			<key>PayloadUUID</key>
-			<string>8486ED8A-220D-47F8-9DA6-38D14D2DB1C0</string>
+			<string>BC9DB495-C493-49AC-99F7-1171CD087925</string>
 			<key>PayloadVersion</key>
-			<integer>1</integer>
+			<integer>2</integer>
 			<key>WebAppInstallForceList</key>
 			<array>
 				<dict>
@@ -39,13 +39,13 @@
 				</dict>
 				<dict>
 					<key>url</key>
-					<string>https://notebooklm.google/</string>
+					<string>https://notebook.google.com/</string>
 					<key>default_launch_container</key>
 					<string>window</string>
 					<key>create_desktop_shortcut</key>
 					<false/>
 					<key>custom_name</key>
-					<string>NotebookLM</string>
+					<string>Gemini Notebook</string>
 				</dict>
 			</array>
 		</dict>
@@ -65,8 +65,8 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>69697E48-9668-4C40-97DE-F13F972EF92E</string>
+	<string>6E21E2DA-8CCF-478A-9018-28215DB52BDB</string>
 	<key>PayloadVersion</key>
-	<integer>1</integer>
+	<integer>2</integer>
 </dict>
 </plist>
