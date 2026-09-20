@@ -95,6 +95,24 @@ def resolve_workspace(cwd_str: str | None = None) -> str:
     return f"📁 {target_dir.name}"
 
 
+def clean_model_name(raw_name: str, effort: str | None = None) -> str:
+    """Clean model name into concise, readable badge."""
+    name = (
+        raw_name.replace("models/", "")
+        .replace("gemini-", "")
+        .replace("Gemini ", "")
+        .replace("-preview", "")
+    )
+    # Remove redundant trailing parenthesis if effort is already shown
+    if " (" in name:
+        name = name.split(" (")[0]
+    name = name.lower().replace(" ", "-")
+
+    if effort and effort.lower() not in ("none", "default"):
+        return f"{name} ({effort.lower()})"
+    return name
+
+
 def main() -> None:
     """Process stdin JSON telemetry and print formatted statusline to stdout."""
     raw = sys.stdin.read().strip()
@@ -110,6 +128,7 @@ def main() -> None:
 
     # 1. Resolve Model
     model_obj = data.get("model") or {}
+    effort = None
     if isinstance(model_obj, dict):
         model_name = (
             model_obj.get("display_name")
@@ -117,23 +136,21 @@ def main() -> None:
             or model_obj.get("id")
             or "gemini"
         )
+        effort = model_obj.get("effort")
     else:
         model_name = str(model_obj) if model_obj else "gemini"
 
-    # Clean / shorten model string
-    model_clean = (
-        str(model_name)
-        .replace("models/", "")
-        .replace("gemini-", "")
-        .replace("-preview", "")
-    )
-    if not model_clean:
-        model_clean = "gemini"
+    model_badge = clean_model_name(model_name, effort)
 
     # 2. Resolve Workspace / Git
     workspace_data = data.get("workspace") or data.get("cwd") or os.getcwd()
     if isinstance(workspace_data, dict):
-        cwd_path = workspace_data.get("path") or workspace_data.get("root_dir")
+        cwd_path = (
+            workspace_data.get("current_dir")
+            or workspace_data.get("path")
+            or workspace_data.get("project_dir")
+            or workspace_data.get("root_dir")
+        )
     else:
         cwd_path = str(workspace_data)
     workspace_display = resolve_workspace(cwd_path)
@@ -143,34 +160,62 @@ def main() -> None:
     if not isinstance(ctx, dict):
         ctx = {}
 
+    # Percent resolution
+    percent = (
+        ctx.get("used_percentage")
+        or ctx.get("percent")
+        or ctx.get("percentage")
+    )
+
+    # Window limit
+    max_tokens = (
+        ctx.get("context_window_size")
+        or ctx.get("max_tokens")
+        or ctx.get("limit")
+        or ctx.get("window_size")
+        or 1_048_576  # Default 1M
+    )
+
+    # Used tokens resolution
+    current_usage = ctx.get("current_usage") or {}
+    if isinstance(current_usage, dict):
+        input_t = current_usage.get("input_tokens", 0)
+        cache_t = current_usage.get("cache_read_input_tokens", 0)
+        out_t = current_usage.get("output_tokens", 0)
+        active_turn_tokens = input_t + cache_t + out_t
+    else:
+        active_turn_tokens = 0
+
+    total_tokens = (
+        ctx.get("total_input_tokens", 0) + ctx.get("total_output_tokens", 0)
+        if "total_input_tokens" in ctx
+        else 0
+    )
     used_tokens = (
         ctx.get("total_tokens")
         or ctx.get("used_tokens")
+        or total_tokens
+        or active_turn_tokens
         or ctx.get("tokens")
-        or ctx.get("current_tokens")
         or 0
     )
-    max_tokens = (
-        ctx.get("max_tokens")
-        or ctx.get("limit")
-        or ctx.get("window_size")
-        or 1_048_576  # Default 1M for Gemini 2.5/2.0
-    )
 
-    percent = ctx.get("percent")
     if percent is None and max_tokens > 0 and used_tokens > 0:
         percent = (used_tokens / max_tokens) * 100
 
-    # Format Output Components
-    if percent is not None:
-        pct_display = f"{percent:.1f}%" if percent < 10 else f"{round(percent)}%"
+    # Format Context Percentage & Token Counts
+    pct_val = float(percent) if percent is not None else 0.0
+    if pct_val >= 10.0:
+        pct_display = f"{round(pct_val)}%"
+    elif pct_val > 0.0:
+        pct_display = f"{pct_val:.1f}%"
     else:
         pct_display = "0%"
 
     if used_tokens > 0:
         tokens_display = f" ({format_tokens(used_tokens)}/{format_tokens(max_tokens)})"
     else:
-        tokens_display = ""
+        tokens_display = f" (0/{format_tokens(max_tokens)})"
 
     # ANSI Colors
     CYAN = "\033[36m"
@@ -183,7 +228,6 @@ def main() -> None:
     GRAY = "\033[90m"
 
     # Context color coding based on threshold
-    pct_val = float(percent) if percent is not None else 0.0
     if pct_val >= 80.0:
         ctx_color = RED
     elif pct_val >= 50.0:
@@ -193,7 +237,7 @@ def main() -> None:
 
     # Format: 󰚩 <model> │  <repo> (<branch> ⇡1 ⇣2) │ 🧠 <pct>% (tokens)
     print(
-        f"{CYAN}󰚩 {model_clean}{RESET} {GRAY}│{RESET} "
+        f"{CYAN}󰚩 {model_badge}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
         f"{PINK}🧠{RESET} {ctx_color}{pct_display}{tokens_display}{RESET}"
     )
