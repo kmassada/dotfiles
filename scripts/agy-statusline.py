@@ -235,11 +235,11 @@ def main() -> None:
     else:
         ctx_color = GREEN
 
-    # Format: 󰚩 <model> │  <repo> (<branch> ⇡1 ⇣2) │ 🧠 <pct>% (tokens)
+    # Format: 󰚩 <model> │  <repo> (<branch> ⇡1 ⇣2) │ 󰧑 <pct>% (tokens)
     print(
         f"{CYAN}󰚩 {model_badge}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
-        f"{PINK}🧠{RESET} {ctx_color}{pct_display}{tokens_display}{RESET}"
+        f"{PINK}󰧑{RESET} {ctx_color}{pct_display}{tokens_display}{RESET}"
     )
 
 

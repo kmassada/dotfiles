@@ -41,6 +41,7 @@ class TestAgyStatusline(unittest.TestCase):
         self.assertIn("dotfiles", output)
         self.assertIn("12%", output)
         self.assertIn("125k/1.0M", output)
+        self.assertIn("󰧑", output)
 
     @mock.patch("sys.stdin", io.StringIO(""))
     @mock.patch("sys.stdout", new_callable=io.StringIO)
