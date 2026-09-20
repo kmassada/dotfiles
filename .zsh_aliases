@@ -237,3 +237,30 @@ clean_gemini_prox() {
         echo "You may need to investigate further."
     fi
 }
+
+# Update Bitwarden Secrets Manager CLI (bws) to latest release
+update_bws() {
+    echo "Checking latest Bitwarden Secrets Manager (bws) release..."
+    local arch="aarch64"
+    if [[ "$(uname -m)" == "x86_64" ]]; then arch="x86_64"; fi
+    local ver
+    ver=$(curl -fsSL https://api.github.com/repos/bitwarden/sdk-sm/releases 2>/dev/null | grep '"tag_name": "bws-v' | head -n 1 | sed -E 's/.*"bws-v([^"]+)".*/\1/')
+    if [[ -z "$ver" ]]; then
+        echo "Failed to fetch latest bws release tag."
+        return 1
+    fi
+    echo "Downloading bws v${ver} (${arch})..."
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    local url="https://github.com/bitwarden/sdk-sm/releases/download/bws-v${ver}/bws-${arch}-apple-darwin-${ver}.zip"
+    if curl -fsSL "$url" -o "$tmp_dir/bws.zip" 2>/dev/null; then
+        mkdir -p "$HOME/.local/bin"
+        unzip -q -o "$tmp_dir/bws.zip" -d "$tmp_dir" 2>/dev/null && install -m 755 "$tmp_dir/bws" "$HOME/.local/bin/bws"
+        rm -rf "$tmp_dir"
+        echo "bws updated successfully: $(bws --version)"
+    else
+        rm -rf "$tmp_dir"
+        echo "Failed to download bws from $url"
+        return 1
+    fi
+}

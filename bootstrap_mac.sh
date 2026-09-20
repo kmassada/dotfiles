@@ -221,11 +221,16 @@ if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
         log_info "Installing Bitwarden Secrets Manager CLI (bws)..."
         mkdir -p "$HOME/.local/bin"
         TMP_BWS=$(mktemp -d)
-        if curl -fsSL "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-aarch64-apple-darwin-2.1.0.zip" -o "$TMP_BWS/bws.zip" 2>/dev/null; then
+        BWS_ARCH="aarch64"
+        if [[ "$(uname -m)" == "x86_64" ]]; then BWS_ARCH="x86_64"; fi
+        BWS_VER=$(curl -fsSL https://api.github.com/repos/bitwarden/sdk-sm/releases 2>/dev/null | grep '"tag_name": "bws-v' | head -n 1 | sed -E 's/.*"bws-v([^"]+)".*/\1/')
+        BWS_VER="${BWS_VER:-2.1.0}"
+        BWS_URL="https://github.com/bitwarden/sdk-sm/releases/download/bws-v${BWS_VER}/bws-${BWS_ARCH}-apple-darwin-${BWS_VER}.zip"
+        if curl -fsSL "$BWS_URL" -o "$TMP_BWS/bws.zip" 2>/dev/null; then
             unzip -q "$TMP_BWS/bws.zip" -d "$TMP_BWS" 2>/dev/null && install -m 755 "$TMP_BWS/bws" "$HOME/.local/bin/bws" 2>/dev/null
             rm -rf "$TMP_BWS"
             if command -v bws &>/dev/null; then
-                log_success "Bitwarden Secrets Manager CLI (bws) installed to ~/.local/bin/bws."
+                log_success "Bitwarden Secrets Manager CLI (bws v${BWS_VER}) installed to ~/.local/bin/bws."
             fi
         else
             rm -rf "$TMP_BWS"
