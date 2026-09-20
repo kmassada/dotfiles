@@ -8,6 +8,11 @@ fi
 # Disable URL escaping when pasting
 DISABLE_MAGIC_FUNCTIONS=true
 
+# Machine-specific configuration (local identity, role, prompt icon & color)
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/machine.env" ]]; then
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/machine.env"
+fi
+
 # OS Detection
 OS_NAME=$(uname -s)
 

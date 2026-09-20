@@ -37,29 +37,40 @@ NO_AGENTS=false
 NO_AGY=false
 WITH_CLAUDE=false
 NO_PULL=false
+NO_MACHINE=false
+MACHINE_ROLE=""
+MACHINE_NAME=""
+MACHINE_ICON=""
+MACHINE_COLOR=""
 
 usage() {
     cat << USAGE
 Usage: $0 [OPTIONS]
 
 Options:
-  --cli-only     Install only command-line packages (skips GUI casks, App Store, & OS preferences)
-  --no-casks     Skip GUI applications in Brewfile
-  --no-mas       Skip Mac App Store applications in Brewfile
-  --no-settings  Skip configuring macOS preferences (Dock, Finder, Ergonomics)
-  --no-webapps   Skip Progressive Web Apps setup (automatically skipped on *.internal)
-  --no-agents    Skip AI agent environment setup (skills, rules, MCP, casks)
-  --with-claude  Opt-in to install and configure Claude Code alongside Antigravity
-  --no-ssh       Skip SSH client key setup for GitHub
-  --no-sshd      Skip enabling Remote Login (SSH server)
-  --no-pull      Skip git pull if dotfiles repo already exists
-  -h, --help     Show this help message
+  --cli-only            Install only command-line packages (skips GUI casks, App Store, & OS preferences)
+  --no-casks            Skip GUI applications in Brewfile
+  --no-mas              Skip Mac App Store applications in Brewfile
+  --no-settings         Skip configuring macOS preferences (Dock, Finder, Ergonomics)
+  --no-machine          Skip machine identity and role configuration
+  --role <role>         Set machine role: "client" (laptop) or "server" (always-on Mac Mini)
+  --name <name>         Set machine alias (e.g. "mac-mini", "macbook-air")
+  --icon <name|glyph>   Set prompt icon (laptop, desktop, server, work, home, apple, linux, terminal)
+  --icon-color <color>  Set prompt icon color (white, yellow, cyan, green, magenta, blue, red)
+  --no-webapps          Skip Progressive Web Apps setup (automatically skipped on *.internal)
+  --no-agents           Skip AI agent environment setup (skills, rules, MCP, casks)
+  --with-claude         Opt-in to install and configure Claude Code alongside Antigravity
+  --no-ssh              Skip SSH client key setup for GitHub
+  --no-sshd             Skip enabling Remote Login (SSH server)
+  --no-pull             Skip git pull if dotfiles repo already exists
+  -h, --help            Show this help message
 
 Examples:
-  $0                     # Full installation (CLI, GUI apps, Mac App Store, dotfiles, SSH, OS settings, Agy)
-  $0 --cli-only          # Lightweight/headless setup (only CLI tools & dotfiles)
-  $0 --with-claude       # Full installation including Claude Code
-  $0 --no-mas            # Install CLI & Casks, but skip Mac App Store apps
+  $0                                      # Full installation with auto hardware detection
+  $0 --role server --name mac-mini        # Mac Mini always-on server setup
+  $0 --cli-only                           # Lightweight/headless setup (only CLI tools & dotfiles)
+  $0 --with-claude                        # Full installation including Claude Code
+  $0 --no-mas                             # Install CLI & Casks, but skip Mac App Store apps
 USAGE
     exit 0
 }
@@ -71,6 +82,11 @@ while [[ $# -gt 0 ]]; do
         --no-casks)    NO_CASKS=true; shift ;;
         --no-mas)      NO_MAS=true; shift ;;
         --no-settings) NO_SETTINGS=true; shift ;;
+        --no-machine)  NO_MACHINE=true; shift ;;
+        --role)        MACHINE_ROLE="$2"; shift 2 ;;
+        --name)        MACHINE_NAME="$2"; shift 2 ;;
+        --icon)        MACHINE_ICON="$2"; shift 2 ;;
+        --icon-color)  MACHINE_COLOR="$2"; shift 2 ;;
         --no-webapps)        NO_WEBAPPS=true; shift ;;
         --no-agents|--no-agy) NO_AGENTS=true; NO_AGY=true; shift ;;
         --with-claude)       WITH_CLAUDE=true; shift ;;
@@ -248,12 +264,26 @@ if [ "$NO_SETTINGS" = false ]; then
     else
         log_warn "Settings script not found or not executable at $SETTINGS_SCRIPT"
     fi
+# ------------------------------------------------------------------------------
+# 10. Machine Identity & Role Provisioning (Icon, Color, Server/Client Policies)
+# ------------------------------------------------------------------------------
+if [ "$NO_MACHINE" = false ]; then
+    MACHINE_SCRIPT="$DOTFILES_DIR/scripts/setup-machine.sh"
+    if [[ -x "$MACHINE_SCRIPT" ]]; then
+        log_info "Configuring machine identity, prompt icon, and system role..."
+        MACHINE_FLAGS=(--apply)
+        if [[ -n "$MACHINE_NAME" ]]; then MACHINE_FLAGS+=(--name "$MACHINE_NAME"); fi
+        if [[ -n "$MACHINE_ROLE" ]]; then MACHINE_FLAGS+=(--role "$MACHINE_ROLE"); fi
+        if [[ -n "$MACHINE_ICON" ]]; then MACHINE_FLAGS+=(--icon "$MACHINE_ICON"); fi
+        if [[ -n "$MACHINE_COLOR" ]]; then MACHINE_FLAGS+=(--icon-color "$MACHINE_COLOR"); fi
+        "$MACHINE_SCRIPT" "${MACHINE_FLAGS[@]}"
+    fi
 else
-    log_info "Skipping macOS preferences (--no-settings or --cli-only)."
+    log_info "Skipping machine setup (--no-machine)."
 fi
 
 # ------------------------------------------------------------------------------
-# 10. Web Applications (PWAs for Personal Mac)
+# 11. Web Applications (PWAs for Personal Mac)
 # ------------------------------------------------------------------------------
 if [ "$NO_WEBAPPS" = false ] && [ "$CLI_ONLY" = false ]; then
     FULL_HOST="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo "")"
@@ -272,7 +302,7 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 11. AI Agent Environment (Skills, Rules, MCP, Casks)
+# 12. AI Agent Environment (Skills, Rules, MCP, Casks)
 # ------------------------------------------------------------------------------
 if [ "$NO_AGENTS" = false ] && [ "$NO_AGY" = false ]; then
     AGENTS_SCRIPT="$DOTFILES_DIR/agents/setup.sh"

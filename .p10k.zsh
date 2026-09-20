@@ -94,16 +94,39 @@
   # in Pure that makes prompt drift down whenever you use the Alt-C binding from fzf or similar.
   typeset -g POWERLEVEL9K_PROMPT_ADD_NEWLINE=true
 
+  # Resolve Machine Icon (from name alias or raw glyph)
+  local _m_icon=""
+  if [[ -n "$MACHINE_ICON" ]]; then
+    case "$MACHINE_ICON" in
+      laptop|macbook|notebook) _m_icon="󰌢" ;;
+      desktop|mac-mini|imac)   _m_icon="" ;;
+      server|station|box)      _m_icon="󰒋" ;;
+      work|office)             _m_icon="󱥒" ;;
+      home)                    _m_icon="󰋜" ;;
+      apple|mac)               _m_icon="" ;;
+      linux|tux)               _m_icon="" ;;
+      terminal|cli)            _m_icon="" ;;
+      robot|agent)             _m_icon="󰚩" ;;
+      *)                       _m_icon="$MACHINE_ICON" ;;
+    esac
+  fi
+
+  local _m_color="${MACHINE_ICON_COLOR:-white}"
+  local _m_prefix=""
+  if [[ -n "$_m_icon" ]]; then
+    _m_prefix="%F{${_m_color}}${_m_icon}%f "
+  fi
+
   # Magenta prompt symbol if the last command succeeded.
   typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS}_FOREGROUND=$yellow
   # Red prompt symbol if the last command failed.
   typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS}_FOREGROUND=$red
-  # Default prompt symbol.
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='❯'
+  # Default prompt symbol with optional machine icon prefix.
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION="${_m_prefix}❯"
   # Prompt symbol in command vi mode.
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='❮'
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION="${_m_prefix}❮"
   # Prompt symbol in visual vi mode is the same as in command mode.
-  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIVIS_CONTENT_EXPANSION='❮'
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIVIS_CONTENT_EXPANSION="${_m_prefix}❮"
   # Prompt symbol in overwrite vi mode is the same as in command mode.
   typeset -g POWERLEVEL9K_PROMPT_CHAR_OVERWRITE_STATE=false
 

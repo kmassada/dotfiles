@@ -5,6 +5,8 @@ local/
 .config/gcloud/
 .config/sharing-snips/
 .config/gws/
+.config/dotfiles/machine.env
 __pycache__/
 *.pyc
 .DS_Store
+
