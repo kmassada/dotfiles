@@ -53,7 +53,6 @@ are declared in
     "claude": {
       "name": "Claude Code",
       "casks": [
-        "claude",
         "claude-code"
       ],
       "skills_dir": "~/.claude/skills",

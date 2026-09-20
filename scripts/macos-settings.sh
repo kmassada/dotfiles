@@ -11,17 +11,14 @@ set -eo pipefail
 
 BOLD="$(printf '\033[1m')"
 GREEN="$(printf '\033[32m')"
-YELLOW="$(printf '\033[33m')"
 BLUE="$(printf '\033[34m')"
 CYAN="$(printf '\033[36m')"
-RED="$(printf '\033[31m')"
 RESET="$(printf '\033[0m')"
 
 LOCAL_HOST="$(scutil --get ComputerName 2>/dev/null || hostname -s)"
 REMOTE_HOST=""
 APPLY=false
 VIEW_STYLE="Nlsv" # Nlsv = List, clmv = Column
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat << USAGE
@@ -161,12 +158,13 @@ show_discovery() {
 
     check_item() {
         local area="$1" label="$2" desired="$3" domain="$4" key="$5"
-        local raw_l="$(read_local "$domain" "$key")"
-        local val_l="$(format_val "$raw_l" "$key")"
+        local raw_l val_l raw_r val_r
+        raw_l="$(read_local "$domain" "$key")"
+        val_l="$(format_val "$raw_l" "$key")"
 
         if [[ -n "$REMOTE_HOST" ]]; then
-            local raw_r="$(read_remote "$REMOTE_HOST" "$domain" "$key")"
-            local val_r="$(format_val "$raw_r" "$key")"
+            raw_r="$(read_remote "$REMOTE_HOST" "$domain" "$key")"
+            val_r="$(format_val "$raw_r" "$key")"
             printf "%-10s %-32s %-16s %-18s %-18s\n" "$area" "$label" "$desired" "$val_l" "$val_r"
         else
             printf "%-10s %-32s %-16s %-20s\n" "$area" "$label" "$desired" "$val_l"
@@ -357,6 +355,14 @@ apply_settings() {
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerVertSwipeGesture -int 2
     defaults write com.apple.AppleMultitouchTrackpad TrackpadFourFingerVertSwipeGesture -int 2
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadFourFingerVertSwipeGesture -int 2
+
+    # --- Default Document Handlers (duti) ---
+    if command -v duti &>/dev/null; then
+        echo "  → Document Handlers: Setting default editor to Visual Studio Code (duti)"
+        for ext in md markdown txt json yaml yml py sh zsh env; do
+            duti -s com.microsoft.VSCode ".$ext" all 2>/dev/null || true
+        done
+    fi
 
     echo "${BOLD}Restarting Dock & Finder to activate changes...${RESET}"
     killall Dock 2>/dev/null || true
