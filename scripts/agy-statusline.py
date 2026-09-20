@@ -6,7 +6,8 @@
 """Antigravity CLI (agy) Custom Status Line Engine.
 
 Reads session and model telemetry JSON payload from stdin and renders a clean,
-informative status line with model name, git workspace/branch, and context window telemetry.
+informative status line with model name, git workspace/branch/ahead-behind,
+and colorized context window telemetry.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ def format_tokens(num: int) -> str:
 
 
 def resolve_workspace(cwd_str: str | None = None) -> str:
-    """Resolve the git repository name and branch, or directory basename."""
+    """Resolve the git repository name, branch, and upstream ahead/behind status."""
     target_dir = Path(cwd_str).resolve() if cwd_str else Path.cwd()
 
     # Try Git resolution
@@ -48,9 +49,42 @@ def resolve_workspace(cwd_str: str | None = None) -> str:
                 stderr=subprocess.DEVNULL,
                 text=True,
             ).strip()
+
+            # Check upstream ahead / behind (e.g. ⇡1 ⇣2)
+            git_sync = ""
+            try:
+                counts = (
+                    subprocess.check_output(
+                        [
+                            "git",
+                            "-C",
+                            str(target_dir),
+                            "rev-list",
+                            "--left-right",
+                            "--count",
+                            "HEAD...@{upstream}",
+                        ],
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                    )
+                    .strip()
+                    .split()
+                )
+                if len(counts) == 2:
+                    ahead, behind = int(counts[0]), int(counts[1])
+                    sync_parts: list[str] = []
+                    if ahead > 0:
+                        sync_parts.append(f"⇡{ahead}")
+                    if behind > 0:
+                        sync_parts.append(f"⇣{behind}")
+                    if sync_parts:
+                        git_sync = " " + " ".join(sync_parts)
+            except (subprocess.SubprocessError, ValueError, OSError):
+                pass
+
             if branch:
-                return f" {repo_name} ({branch})"
-            return f" {repo_name}"
+                return f" {repo_name} ({branch}{git_sync})"
+            return f" {repo_name}{git_sync}"
     except (subprocess.SubprocessError, FileNotFoundError, OSError):
         pass
 
@@ -141,6 +175,7 @@ def main() -> None:
     # ANSI Colors
     CYAN = "\033[36m"
     MAGENTA = "\033[35m"
+    PINK = "\033[38;5;213m"
     YELLOW = "\033[33m"
     GREEN = "\033[32m"
     RED = "\033[31m"
@@ -156,11 +191,11 @@ def main() -> None:
     else:
         ctx_color = GREEN
 
-    # Format: 󰚩 <model> │  <repo> (<branch>) │ 🧠 <pct>% (tokens)
+    # Format: 󰚩 <model> │  <repo> (<branch> ⇡1 ⇣2) │ 🧠 <pct>% (tokens)
     print(
         f"{CYAN}󰚩 {model_clean}{RESET} {GRAY}│{RESET} "
         f"{MAGENTA}{workspace_display}{RESET} {GRAY}│{RESET} "
-        f"{ctx_color}🧠 {pct_display}{tokens_display}{RESET}"
+        f"{PINK}🧠{RESET} {ctx_color}{pct_display}{tokens_display}{RESET}"
     )
 
 
