@@ -1,22 +1,20 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# setup-gws.sh - Google Workspace CLI (gws) & Multi-Vault Cloud Engine
+# setup-gws.sh - Google Workspace CLI (gws) & Zero-Disk Cloud Provisioning Engine
 # ==============================================================================
 # Bootstraps, audits, and manages Google Workspace credentials across vaults:
-#   1. Resolves credentials from pass, Bitwarden, GCP Secrets, or memory
+#   1. Resolves credentials directly from UNIX password store (pass) or memory
 #   2. Audits gws CLI, gcloud CLI, GCP project, and password store state
 #   3. Inspects/creates dedicated GCP project ($USER-gws by default)
 #   4. Enables all required Google Workspace APIs (Sheets, Drive, Docs, etc.)
 #   5. Guides OAuth consent screen and Desktop OAuth client creation
-#   6. Securely persists credentials to ~/.local/gws_auth.zsh (unless --no-disk)
-#   7. Syncs credentials to pass and macOS launchctl environment
-#   8. Triggers `gws auth login` to finalize browser-based OAuth authentication
+#   6. Syncs credentials directly to pass (ai-agents/gws) and macOS Keychain
+#   7. Triggers `gws auth login` to finalize browser-based OAuth authentication
 #
 # Usage:
 #   ./setup-gws.sh                  # Audit current Google Workspace status
 #   ./setup-gws.sh --apply          # Configure GCP project, APIs, & credentials
-#   ./setup-gws.sh --no-disk        # Zero-disk mode (vault & memory only)
 #   ./setup-gws.sh --project <id>   # Use a specific GCP project ID
 #   ./setup-gws.sh --client-id <id> --client-secret <sec> # Pass credentials directly
 # ==============================================================================
@@ -36,12 +34,10 @@ log_success() { echo -e "${GREEN}✅ ${BOLD}$*${RESET}"; }
 log_warn()    { echo -e "${YELLOW}⚠️  ${BOLD}$*${RESET}"; }
 log_error()   { echo -e "${RED}❌ ${BOLD}$*${RESET}"; }
 
-AUTH_FILE="$HOME/.local/gws_auth.zsh"
 DEFAULT_PROJECT="${USER:-kmassada}-gws"
 PROJECT_ID="$DEFAULT_PROJECT"
 
 APPLY=false
-NO_DISK=false
 CLI_CLIENT_ID=""
 CLI_CLIENT_SECRET=""
 
@@ -65,7 +61,6 @@ ${BOLD}Usage:${RESET} $0 [OPTIONS]
 
 ${BOLD}Options:${RESET}
   --apply                   Provision GCP project, enable APIs, and configure credentials
-  --no-disk                 Do not write plaintext ~/.local/gws_auth.zsh file
   --project <id>            Specify GCP project ID (default: ${DEFAULT_PROJECT})
   --client-id <id>          Provide OAuth Client ID directly
   --client-secret <secret>  Provide OAuth Client Secret directly
@@ -74,7 +69,6 @@ ${BOLD}Options:${RESET}
 ${BOLD}Examples:${RESET}
   $0                        # Audit current gws, GCP, pass, and credential status
   $0 --apply                # Interactive setup / refresh
-  $0 --apply --no-disk      # Zero-disk mode (in-memory & vault only)
   $0 --apply --project my-p # Provision using custom GCP project
 USAGE
     exit 0
@@ -83,7 +77,6 @@ USAGE
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --apply)          APPLY=true; shift ;;
-        --no-disk)        NO_DISK=true; shift ;;
         --project)        PROJECT_ID="$2"; shift 2 ;;
         --client-id)      CLI_CLIENT_ID="$2"; APPLY=true; shift 2 ;;
         --client-secret)  CLI_CLIENT_SECRET="$2"; APPLY=true; shift 2 ;;
@@ -91,12 +84,6 @@ while [[ $# -gt 0 ]]; do
         *)                log_error "Unknown option: $1"; usage ;;
     esac
 done
-
-# Load existing local auth if present
-if [ -f "$AUTH_FILE" ] && [ "$NO_DISK" = false ]; then
-    # shellcheck disable=SC1090
-    source "$AUTH_FILE" 2>/dev/null || true
-fi
 
 # Vault Resolution Helpers
 get_secret_from_pass() {
@@ -225,20 +212,18 @@ audit_gws() {
     if command -v gws &>/dev/null; then
         local raw_status
         raw_status="$(gws auth status 2>/dev/null || echo "{}")"
-        local auth_method
+        local auth_method user_email
         auth_method="$(echo "$raw_status" | grep -o '"auth_method": *"[^"]*"' | cut -d'"' -f4 || echo "none")"
+        user_email="$(echo "$raw_status" | grep -o '"user": *"[^"]*"' | cut -d'"' -f4 || echo "")"
         if [[ "$auth_method" != "none" && -n "$auth_method" ]]; then
-            gws_auth_status="${GREEN}Authenticated (method: $auth_method)${RESET}"
+            if [[ -n "$user_email" ]]; then
+                gws_auth_status="${GREEN}Authenticated ($user_email via $auth_method)${RESET}"
+            else
+                gws_auth_status="${GREEN}Authenticated (method: $auth_method)${RESET}"
+            fi
         fi
     fi
     printf "%-26s: %b\n" "gws Auth State" "$gws_auth_status"
-
-    # 6. Check Local Auth File
-    local file_status="${YELLOW}Not Present${RESET}"
-    if [[ -f "$AUTH_FILE" ]]; then
-        file_status="${GREEN}Present ($AUTH_FILE)${RESET}"
-    fi
-    printf "%-26s: %b\n" "Local Auth File" "$file_status"
     echo "----------------------------------------------------------------------"
     echo ""
 
@@ -250,7 +235,7 @@ audit_gws() {
 
 apply_gws() {
     echo ""
-    echo "${BOLD}${CYAN}⚙️  Bootstrapping Google Workspace (gws) & Multi-Vault Setup${RESET}"
+    echo "${BOLD}${CYAN}⚙️  Bootstrapping Google Workspace (gws) & Zero-Disk Setup${RESET}"
     echo "======================================================================"
 
     # Verify gws CLI
@@ -290,14 +275,14 @@ apply_gws() {
     gcloud services enable "${REQUIRED_APIS[@]}" --project="$PROJECT_ID"
     log_success "Workspace APIs enabled."
 
-    # 3. Resolve OAuth Credentials from vaults
+    # 3. Resolve OAuth Credentials from pass/vaults
     local client_id
     local client_secret
     client_id="$(get_active_client_id)"
     client_secret="$(get_active_client_secret)"
 
     if [[ -n "$client_id" && -n "$client_secret" ]]; then
-        log_success "Found active OAuth credentials in vault/environment."
+        log_success "Found active OAuth credentials in password store (ai-agents/gws)."
     else
         echo ""
         echo "${BOLD}Step 1: Configure OAuth Consent Screen${RESET}"
@@ -348,25 +333,7 @@ apply_gws() {
         exit 1
     fi
 
-    # 4. Save to ~/.local/gws_auth.zsh unless --no-disk
-    if [ "$NO_DISK" = false ]; then
-        mkdir -p "$(dirname "$AUTH_FILE")"
-        cat << EOF2 > "$AUTH_FILE"
-# ==============================================================================
-# gws_auth.zsh - Google Workspace CLI & Cloud Environment
-# Auto-generated by setup-gws.sh on $(date)
-# ==============================================================================
-export GOOGLE_WORKSPACE_PROJECT_ID="$PROJECT_ID"
-export GOOGLE_WORKSPACE_CLI_CLIENT_ID="$client_id"
-export GOOGLE_WORKSPACE_CLI_CLIENT_SECRET="$client_secret"
-EOF2
-        chmod 600 "$AUTH_FILE"
-        log_success "Saved credentials to $AUTH_FILE (mode 0600)"
-    else
-        log_info "Zero-Disk mode enabled: skipped writing $AUTH_FILE"
-    fi
-
-    # 5. Set macOS launchctl environment
+    # 4. Set macOS launchctl environment
     if command -v launchctl &>/dev/null; then
         launchctl setenv GOOGLE_WORKSPACE_PROJECT_ID "$PROJECT_ID"
         launchctl setenv GOOGLE_WORKSPACE_CLI_CLIENT_ID "$client_id"
@@ -374,7 +341,7 @@ EOF2
         log_success "Updated macOS launchctl environment variables"
     fi
 
-    # 6. Authenticate gws
+    # 5. Authenticate gws
     echo ""
     log_info "Initiating gws OAuth login..."
     export GOOGLE_WORKSPACE_PROJECT_ID="$PROJECT_ID"
