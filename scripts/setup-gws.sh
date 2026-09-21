@@ -381,6 +381,16 @@ EOF2
     export GOOGLE_WORKSPACE_CLI_CLIENT_ID="$client_id"
     export GOOGLE_WORKSPACE_CLI_CLIENT_SECRET="$client_secret"
 
+    echo ""
+    echo "${YELLOW}⚠️  OAuth Consent & Unverified App Notes:${RESET}"
+    echo "  • If blocked by ${RED}'Access blocked: gws has not completed verification'${RESET}:"
+    echo "    1. Open: ${CYAN}https://console.cloud.google.com/apis/credentials/consent?project=${PROJECT_ID}${RESET}"
+    echo "    2. Under ${BOLD}'Test users'${RESET} click ${BOLD}'+ ADD USERS'${RESET} and add: ${BOLD}${active_account}${RESET}"
+    echo "  • When Google shows ${YELLOW}'Google hasn'\''t verified this app'${RESET}:"
+    echo "    1. Click ${BOLD}Advanced${RESET} (bottom left)"
+    echo "    2. Click ${BOLD}Go to gws CLI (unsafe)${RESET} -> Click ${BOLD}Continue / Allow${RESET}"
+    echo ""
+
     read -r -p "Run 'gws auth login' now? [Y/n]: " do_login
     if [[ ! "$do_login" =~ ^[Nn] ]]; then
         gws auth login

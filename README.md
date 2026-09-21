@@ -350,6 +350,20 @@ OAuth credentials and `pass` password store:
 ~/src/dotfiles/scripts/setup-gws.sh --apply
 ```
 
+#### OAuth Consent & Unverified App Notes
+
+When authenticating via `gws auth login` with an external Google Cloud project:
+
+* **Access Blocked (Verification Required)**: If Google blocks login with
+  `Access blocked: gws has not completed the Google verification process`,
+  open [Google Cloud Console OAuth Consent][gcp-oauth-consent], scroll to
+  **Test users**, click **+ ADD USERS**, and add your email address.
+* **Google hasn't verified this app**: In the browser consent screen, click
+  **Advanced** (bottom left), then click **Go to gws CLI (unsafe)**, and
+  click **Continue / Allow**.
+
+[gcp-oauth-consent]: https://console.cloud.google.com/apis/credentials/consent
+
 ### Slack Workspace & Bot Bootstrap
 
 Audit or provision Slack bot tokens, workspace identities, and `pass` sync:
