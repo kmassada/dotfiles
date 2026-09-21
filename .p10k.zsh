@@ -139,12 +139,13 @@
   # Blue current directory.
   typeset -g POWERLEVEL9K_DIR_FOREGROUND=$blue
 
+  local _m_host="${MACHINE_NAME:-%m}"
   # Context format when root: user@host [machine_icon].
-  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$grey}%n@%m${_m_suffix}%f"
+  typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE="%F{$grey}%n@${_m_host}${_m_suffix}%f"
   # Context format when not root: user@host [machine_icon].
-  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$grey}%n@%m${_m_suffix}%f"
+  typeset -g POWERLEVEL9K_CONTEXT_TEMPLATE="%F{$grey}%n@${_m_host}${_m_suffix}%f"
   # Show context always with machine icon suffix.
-  typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION="%n@%m${_m_suffix}"
+  typeset -g POWERLEVEL9K_CONTEXT_DEFAULT_CONTENT_EXPANSION="%n@${_m_host}${_m_suffix}"
   typeset -g POWERLEVEL9K_CONTEXT_SUDO_CONTENT_EXPANSION=
 
   # Show previous command duration only if it's >= 5s.
