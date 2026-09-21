@@ -186,13 +186,20 @@ def draw_tab(
     end = screen.cursor.x
 
     if is_last:
-        draw_right_status(screen, draw_data)
+        draw_right_status(screen, draw_data, tab.is_active)
 
     return end
 
 
-def draw_right_status(screen: Screen, draw_data: DrawData) -> None:
-    """Draws the hostname block on the far right of the tab bar."""
+def draw_right_status(
+    screen: Screen, draw_data: DrawData, last_tab_is_active: bool
+) -> None:
+    """Draw the hostname chip pinned to the right edge of the tab bar.
+
+    The chip is positioned from the right edge rather than appended after the
+    last tab, so a crowded bar can no longer drop it: once the tabs reach the
+    edge the chip rewinds over the tail of the last tab instead of vanishing.
+    """
     inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
     hostname = get_ssh_hostname()
 
@@ -203,37 +210,45 @@ def draw_right_status(screen: Screen, draw_data: DrawData) -> None:
             screen.draw(" " * gap)
         return
 
-    separator = ""
+    separator = "\ue0b2"
     status_text = f" {hostname} "
     cells_needed = len(status_text) + 1
+    start = screen.columns - cells_needed
 
-    # Calculate available space between the last tab and the right edge
-    gap = screen.columns - screen.cursor.x - cells_needed
-
-    if gap >= 0:
-        if gap > 0:
-            # Fill intermediate empty space with the firm background color
-            screen.cursor.bg = inactive_bg
-            screen.draw(" " * gap)
-
-        # Use color5 (purple) for the hostname chip to distinguish it from the active tab
-        fg = as_rgb(color_as_int(draw_data.active_fg))
-        bg = as_rgb(color_as_int(opts.color5))
-
-        # Draw left-pointing powerline separator
-        screen.cursor.fg = bg
-        screen.cursor.bg = inactive_bg
-        screen.draw(separator)
-
-        # Draw the hostname text
-        screen.cursor.fg = fg
-        screen.cursor.bg = bg
-        screen.draw(status_text)
-    else:
-        # Tab bar is too crowded for the hostname block.
-        # Guarantee all remaining columns are painted with inactive_bg so that
-        # window background transparency never bleeds through into the bar.
+    if start < 0:
+        # Bar is narrower than the chip itself. Paint what is left so window
+        # background transparency cannot bleed through into the bar.
         remaining = screen.columns - screen.cursor.x
         if remaining > 0:
             screen.cursor.bg = inactive_bg
             screen.draw(" " * remaining)
+        return
+
+    if screen.cursor.x < start:
+        # Room to spare: run the ribbon up to where the chip begins.
+        screen.cursor.bg = inactive_bg
+        screen.draw(" " * (start - screen.cursor.x))
+        behind = inactive_bg
+    else:
+        # Bar is full: rewind over the tail of the last tab. The separator has
+        # to sit on that tab's colour, not the ribbon's, or it leaves a notch.
+        behind = (
+            as_rgb(color_as_int(draw_data.active_bg))
+            if last_tab_is_active
+            else inactive_bg
+        )
+        screen.cursor.x = start
+
+    # Use color5 (purple) for the hostname chip to distinguish it from the active tab
+    fg = as_rgb(color_as_int(draw_data.active_fg))
+    bg = as_rgb(color_as_int(opts.color5))
+
+    # Draw left-pointing powerline separator
+    screen.cursor.fg = bg
+    screen.cursor.bg = behind
+    screen.draw(separator)
+
+    # Draw the hostname text
+    screen.cursor.fg = fg
+    screen.cursor.bg = bg
+    screen.draw(status_text)
