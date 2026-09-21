@@ -53,12 +53,14 @@ def get_current_kitty_tabs() -> list[dict[str, str | None]]:
                 fg_list = w.get("foregroundprocesses", []) or w.get(
                     "foreground_processes", []
                 )
+                agent_type: str | None = None
                 agy_conv: str | None = None
 
                 for fg in fg_list:
                     cmdline = fg.get("cmdline", [])
                     cmd_str = " ".join(cmdline)
                     if "agy" in cmd_str:
+                        agent_type = "agy"
                         pid = fg.get("pid")
                         conv_arg = re.search(r"--conversation=([0-9a-fA-F-]+)", cmd_str)
                         if conv_arg:
@@ -100,11 +102,21 @@ def get_current_kitty_tabs() -> list[dict[str, str | None]]:
                         if fg.get("cwd"):
                             cwd = fg.get("cwd")
                         break
+                    elif any(
+                        arg in ("claude", "claude-code")
+                        or arg.endswith(("/claude", "/claude-code"))
+                        for arg in cmdline
+                    ):
+                        agent_type = "claude"
+                        if fg.get("cwd"):
+                            cwd = fg.get("cwd")
+                        break
 
                 tabs_data.append(
                     {
                         "title": title,
                         "cwd": cwd,
+                        "agent_type": agent_type,
                         "agy_conversation": agy_conv,
                     }
                 )
@@ -130,12 +142,15 @@ def save_sessions(
     for i, t in enumerate(tabs):
         title = t["title"] or "~"
         cwd = t["cwd"] or str(Path.home())
-        conv = t["agy_conversation"]
+        agent = t.get("agent_type")
+        conv = t.get("agy_conversation")
 
         conf_lines.append(f"new_tab {title}")
         conf_lines.append(f"cd {cwd}")
-        if conv:
+        if agent == "agy" and conv:
             conf_lines.append(f'launch zsh -l -c "agy --conversation={conv}; exec zsh"')
+        elif agent == "claude":
+            conf_lines.append('launch zsh -l -c "claude --continue; exec zsh"')
         else:
             conf_lines.append("launch zsh")
         conf_lines.append("")
@@ -145,7 +160,7 @@ def save_sessions(
     # 2. Generate executable bash restore script
     script_lines = [
         "#!/usr/bin/env bash",
-        "# Restore Kitty tabs and agy sessions",
+        "# Restore Kitty tabs and AI agent sessions (agy & claude)",
         "set -euo pipefail",
         "",
         'if pgrep -x "kitty" >/dev/null 2>&1; then',
@@ -155,9 +170,15 @@ def save_sessions(
     for t in tabs:
         title = t["title"] or "~"
         cwd = t["cwd"] or str(Path.home())
-        conv = t["agy_conversation"]
-        if conv:
+        agent = t.get("agent_type")
+        conv = t.get("agy_conversation")
+        if agent == "agy" and conv:
             cmd = f"agy --conversation={conv}; exec zsh"
+            script_lines.append(
+                f'    kitty @ launch --type=tab --tab-title="{title}" --cwd="{cwd}" zsh -l -c "{cmd}"'
+            )
+        elif agent == "claude":
+            cmd = "claude --continue; exec zsh"
             script_lines.append(
                 f'    kitty @ launch --type=tab --tab-title="{title}" --cwd="{cwd}" zsh -l -c "{cmd}"'
             )
@@ -192,13 +213,20 @@ def print_tabs_table(
     """Print formatted summary table of tabs."""
     print(f"\n=== {header} ({len(tabs)} tabs) ===")
     col_fmt = "%-4s %-20s %-32s %-40s"
-    print(col_fmt % ("#", "TITLE", "DIRECTORY", "AGY CONVERSATION"))
+    print(col_fmt % ("#", "TITLE", "DIRECTORY", "SESSION / AGENT"))
     print("-" * 100)
     for idx, t in enumerate(tabs, 1):
-        title = (t["title"] or "~")[:18]
-        cwd = (t["cwd"] or "~").replace(str(Path.home()), "~")[:30]
-        conv = t["agy_conversation"] or "[Plain Shell]"
-        print(col_fmt % (idx, title, cwd, conv))
+        title = (t.get("title") or "~")[:18]
+        cwd = (t.get("cwd") or "~").replace(str(Path.home()), "~")[:30]
+        agent = t.get("agent_type")
+        if agent == "claude":
+            status = "Claude Code [Resume --continue]"
+        elif agent == "agy":
+            conv = t.get("agy_conversation")
+            status = f"AGY [{conv}]" if conv else "Antigravity (agy)"
+        else:
+            status = "[Plain Shell]"
+        print(col_fmt % (idx, title, cwd, status[:38]))
     print()
 
 

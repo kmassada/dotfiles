@@ -39,11 +39,19 @@ class TestKittySession(unittest.TestCase):
             {
                 "title": "dotfiles",
                 "cwd": "/Users/test/src/dotfiles",
+                "agent_type": "agy",
                 "agy_conversation": "11111111-2222-3333-4444-555555555555",
+            },
+            {
+                "title": "audit/claude",
+                "cwd": "/Users/test/src/dotfiles",
+                "agent_type": "claude",
+                "agy_conversation": None,
             },
             {
                 "title": "work",
                 "cwd": "/Users/test",
+                "agent_type": None,
                 "agy_conversation": None,
             },
         ]
@@ -54,7 +62,7 @@ class TestKittySession(unittest.TestCase):
             json_path=self.json_path,
         )
 
-        self.assertEqual(len(saved), 2)
+        self.assertEqual(len(saved), 3)
         self.assertTrue(self.conf_path.exists())
         self.assertTrue(self.script_path.exists())
         self.assertTrue(self.json_path.exists())
@@ -66,6 +74,8 @@ class TestKittySession(unittest.TestCase):
         self.assertIn(
             "agy --conversation=11111111-2222-3333-4444-555555555555", conf_content
         )
+        self.assertIn("new_tab audit/claude", conf_content)
+        self.assertIn("claude --continue", conf_content)
         self.assertIn("new_tab work", conf_content)
         self.assertIn("launch zsh", conf_content)
 
@@ -74,12 +84,17 @@ class TestKittySession(unittest.TestCase):
         self.assertIn(
             'kitty @ launch --type=tab --tab-title="dotfiles"', script_content
         )
+        self.assertIn(
+            'kitty @ launch --type=tab --tab-title="audit/claude"', script_content
+        )
+        self.assertIn("claude --continue", script_content)
         self.assertEqual(self.script_path.stat().st_mode & 0o111, 0o111)
 
         # Verify JSON
         data = json.loads(self.json_path.read_text(encoding="utf-8"))
-        self.assertEqual(len(data), 2)
+        self.assertEqual(len(data), 3)
         self.assertEqual(data[0]["title"], "dotfiles")
+        self.assertEqual(data[1]["agent_type"], "claude")
 
 
 if __name__ == "__main__":
