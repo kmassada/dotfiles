@@ -340,7 +340,7 @@ chmod +x download_scripts.sh
 ### Google Workspace CLI & Cloud Bootstrap (`gws`)
 
 Audit or provision Google Workspace GCP projects, enable APIs, and configure
-OAuth credentials and Doppler secrets:
+OAuth credentials and `pass` password store:
 
 ```bash
 # Audit current gws, GCP project, and authentication state
@@ -352,7 +352,7 @@ OAuth credentials and Doppler secrets:
 
 ### Slack Workspace & Bot Bootstrap
 
-Audit or provision Slack bot tokens, workspace identities, and Doppler sync:
+Audit or provision Slack bot tokens, workspace identities, and `pass` sync:
 
 ```bash
 # Audit Slack workspace token status

@@ -11,8 +11,6 @@ brew "csvlens"
 brew "python@3.14"
 # CSV to Markdown table converter
 brew "csvtomd"
-# CLI for interacting with Doppler secrets and configuration
-brew "doppler"
 # Select default apps for documents and URL schemes on macOS
 brew "duti"
 # Modern, maintained replacement for ls

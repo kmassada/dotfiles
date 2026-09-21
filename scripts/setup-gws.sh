@@ -4,13 +4,13 @@
 # setup-gws.sh - Google Workspace CLI (gws) & Multi-Vault Cloud Engine
 # ==============================================================================
 # Bootstraps, audits, and manages Google Workspace credentials across vaults:
-#   1. Resolves credentials from pass, Bitwarden, GCP Secrets, Doppler, or memory
+#   1. Resolves credentials from pass, Bitwarden, GCP Secrets, or memory
 #   2. Audits gws CLI, gcloud CLI, GCP project, and password store state
 #   3. Inspects/creates dedicated GCP project ($USER-gws by default)
 #   4. Enables all required Google Workspace APIs (Sheets, Drive, Docs, etc.)
 #   5. Guides OAuth consent screen and Desktop OAuth client creation
 #   6. Securely persists credentials to ~/.local/gws_auth.zsh (unless --no-disk)
-#   7. Syncs credentials to pass, Doppler, and macOS launchctl environment
+#   7. Syncs credentials to pass and macOS launchctl environment
 #   8. Triggers `gws auth login` to finalize browser-based OAuth authentication
 #
 # Usage:
@@ -121,14 +121,6 @@ get_active_project_id() {
         echo "$pass_val"
         return 0
     fi
-    if command -v doppler &>/dev/null; then
-        local dop_val
-        dop_val="$(doppler secrets get GOOGLE_WORKSPACE_PROJECT_ID --plain 2>/dev/null || true)"
-        if [[ -n "$dop_val" ]]; then
-            echo "$dop_val"
-            return 0
-        fi
-    fi
     echo "$DEFAULT_PROJECT"
 }
 
@@ -147,14 +139,6 @@ get_active_client_id() {
         echo "$pass_val"
         return 0
     fi
-    if command -v doppler &>/dev/null; then
-        local dop_val
-        dop_val="$(doppler secrets get GOOGLE_WORKSPACE_CLI_CLIENT_ID --plain 2>/dev/null || true)"
-        if [[ -n "$dop_val" ]]; then
-            echo "$dop_val"
-            return 0
-        fi
-    fi
     echo ""
 }
 
@@ -172,14 +156,6 @@ get_active_client_secret() {
     if [[ -n "$pass_val" ]]; then
         echo "$pass_val"
         return 0
-    fi
-    if command -v doppler &>/dev/null; then
-        local dop_val
-        dop_val="$(doppler secrets get GOOGLE_WORKSPACE_CLI_CLIENT_SECRET --plain 2>/dev/null || true)"
-        if [[ -n "$dop_val" ]]; then
-            echo "$dop_val"
-            return 0
-        fi
     fi
     echo ""
 }
@@ -244,18 +220,7 @@ audit_gws() {
     fi
     printf "%-26s: %b\n" "Password Store (pass)" "$pass_status"
 
-    # 5. Check Doppler
-    local doppler_status="Not Configured"
-    if command -v doppler &>/dev/null; then
-        if doppler me &>/dev/null; then
-            doppler_status="${GREEN}Authenticated${RESET}"
-        else
-            doppler_status="${YELLOW}Installed (Not logged in)${RESET}"
-        fi
-    fi
-    printf "%-26s: %b\n" "Doppler CLI" "$doppler_status"
-
-    # 6. Check gws Auth state
+    # 5. Check gws Auth state
     local gws_auth_status="${YELLOW}Unauthenticated${RESET}"
     if command -v gws &>/dev/null; then
         local raw_status
@@ -403,22 +368,7 @@ EOF2
         log_success "Updated macOS launchctl environment variables"
     fi
 
-    # 6. Sync to Doppler if logged in
-    if command -v doppler &>/dev/null && doppler me &>/dev/null; then
-        log_info "Syncing credentials to Doppler..."
-        if doppler configure get project &>/dev/null; then
-            doppler secrets set \
-                GOOGLE_WORKSPACE_PROJECT_ID="$PROJECT_ID" \
-                GOOGLE_WORKSPACE_CLI_CLIENT_ID="$client_id" \
-                GOOGLE_WORKSPACE_CLI_CLIENT_SECRET="$client_secret" \
-                --silent 2>/dev/null || true
-            log_success "Synced Google Workspace secrets to Doppler"
-        else
-            log_warn "Doppler project not configured in current directory. Skipped Doppler secret sync."
-        fi
-    fi
-
-    # 7. Authenticate gws
+    # 6. Authenticate gws
     echo ""
     log_info "Initiating gws OAuth login..."
     export GOOGLE_WORKSPACE_PROJECT_ID="$PROJECT_ID"

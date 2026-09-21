@@ -4,10 +4,10 @@
 # setup-slack.sh - Repeatable Slack Workspace & Bot Credential Engine
 # ==============================================================================
 # Bootstraps, audits, and manages Slack credentials across multi-backend vaults:
-#   1. Resolves tokens from Bitwarden, GCP Secret Manager, Doppler, or memory
+#   1. Resolves tokens from pass, Bitwarden, GCP Secret Manager, or memory
 #   2. Validates Slack bot tokens (xoxb-...) against the Slack API (auth.test)
 #   3. Auto-discovers workspace name, team ID, and bot identity
-#   4. Injects tokens into runtime environment (launchctl, Doppler, Bitwarden)
+#   4. Injects tokens into runtime environment (launchctl, pass, Bitwarden)
 #   5. Verifies MCP configuration in ~/.gemini/config/mcp_config.json
 #
 # Usage:
@@ -176,16 +176,6 @@ except Exception:
         fi
     fi
 
-    # 6. Doppler CLI
-    if command -v doppler &>/dev/null; then
-        local dop_val
-        dop_val="$(doppler secrets get SLACK_BOT_TOKEN --plain 2>/dev/null || true)"
-        if [[ -n "$dop_val" ]]; then
-            echo "$dop_val"
-            return 0
-        fi
-    fi
-
     echo ""
 }
 
@@ -296,17 +286,6 @@ audit_slack() {
         fi
     fi
     printf "%-24s: %b\n" "GCP Secret Manager" "$gcp_status"
-
-    # Check Doppler
-    local doppler_status="Not Configured"
-    if command -v doppler &>/dev/null; then
-        if doppler me &>/dev/null; then
-            doppler_status="${GREEN}Authenticated${RESET}"
-        else
-            doppler_status="${YELLOW}Installed (Not logged in)${RESET}"
-        fi
-    fi
-    printf "%-24s: %b\n" "Doppler Keyring" "$doppler_status"
 
     # Check MCP config
     local mcp_status="${RED}Missing${RESET}"
@@ -444,17 +423,6 @@ EOF2
         echo "$team_name" | pass insert -f -m ai-agents/slack/workspace_name &>/dev/null || true
         echo "$team_url" | pass insert -f -m ai-agents/slack/workspace_url &>/dev/null || true
         log_success "Synced credentials to password store (ai-agents/slack)"
-    fi
-
-    # 4. Sync to Doppler if logged in
-    if command -v doppler &>/dev/null && doppler me &>/dev/null; then
-        log_info "Syncing credentials to Doppler..."
-        if doppler configure get project &>/dev/null; then
-            doppler secrets set SLACK_BOT_TOKEN="$token" SLACK_TEAM_ID="$team_id" --silent 2>/dev/null || true
-            log_success "Synced SLACK_BOT_TOKEN and SLACK_TEAM_ID to Doppler project"
-        else
-            log_warn "Doppler project not configured in current directory. Skipped Doppler secret sync."
-        fi
     fi
 
     # 4. Ensure ~/.gemini/config/mcp_config.json has Slack MCP configured
