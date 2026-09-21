@@ -217,7 +217,12 @@ ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#8787AF'
 alias ls='eza'
 alias vim='nvim'
 alias c='clear'
-source $HOME/.zsh_aliases
+source "$HOME/.zsh_aliases"
+
+# Smart Editor (MIME-aware dispatcher for text, code, and images in CLI/agy)
+export REAL_EDITOR="nvim"
+export EDITOR="$HOME/src/dotfiles/scripts/smart-editor.sh"
+export VISUAL="$EDITOR"
 
 # Added by Antigravity
 
