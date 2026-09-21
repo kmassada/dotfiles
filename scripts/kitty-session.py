@@ -28,8 +28,30 @@ DEFAULT_SESSION_JSON = Path.home() / ".config/kitty/session.json"
 BRAIN_DIR = Path.home() / ".gemini/antigravity-cli/brain"
 
 
+CLAUDE_PROJECTS_DIR = Path.home() / ".claude/projects"
+
+
+def find_claude_session_id(cwd: str, cmd_str: str) -> str | None:
+    """Extract or discover the active Claude Code session UUID."""
+    # 1. Check explicit cmdline arguments
+    match = re.search(r"--(?:resume|session-id)\s+([0-9a-fA-F-]+)", cmd_str)
+    if match:
+        return match.group(1)
+
+    # 2. Check ~/.claude/projects/<slug> for the most recent transcript
+    slug = cwd.replace("/", "-")
+    proj_dir = CLAUDE_PROJECTS_DIR / slug
+    if proj_dir.exists():
+        files = list(proj_dir.glob("*.jsonl"))
+        if files:
+            files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+            return files[0].stem
+
+    return None
+
+
 def get_current_kitty_tabs() -> list[dict[str, str | None]]:
-    """Query Kitty IPC to extract all tabs, directories, and agy conversations."""
+    """Query Kitty IPC to extract all tabs, directories, and agent conversations."""
     try:
         raw_ls = subprocess.check_output(["kitty", "@", "ls"], text=True)
         os_windows = json.loads(raw_ls)
@@ -55,6 +77,7 @@ def get_current_kitty_tabs() -> list[dict[str, str | None]]:
                 )
                 agent_type: str | None = None
                 agy_conv: str | None = None
+                claude_session: str | None = None
 
                 for fg in fg_list:
                     cmdline = fg.get("cmdline", [])
@@ -110,6 +133,7 @@ def get_current_kitty_tabs() -> list[dict[str, str | None]]:
                         agent_type = "claude"
                         if fg.get("cwd"):
                             cwd = fg.get("cwd")
+                        claude_session = find_claude_session_id(cwd, cmd_str)
                         break
 
                 tabs_data.append(
@@ -118,6 +142,7 @@ def get_current_kitty_tabs() -> list[dict[str, str | None]]:
                         "cwd": cwd,
                         "agent_type": agent_type,
                         "agy_conversation": agy_conv,
+                        "claude_session": claude_session,
                     }
                 )
 
@@ -144,11 +169,16 @@ def save_sessions(
         cwd = t["cwd"] or str(Path.home())
         agent = t.get("agent_type")
         conv = t.get("agy_conversation")
+        claude_sess = t.get("claude_session")
 
         conf_lines.append(f"new_tab {title}")
         conf_lines.append(f"cd {cwd}")
         if agent == "agy" and conv:
             conf_lines.append(f'launch zsh -l -c "agy --conversation={conv}; exec zsh"')
+        elif agent == "claude" and claude_sess:
+            conf_lines.append(
+                f'launch zsh -l -c "claude --resume {claude_sess}; exec zsh"'
+            )
         elif agent == "claude":
             conf_lines.append('launch zsh -l -c "claude --continue; exec zsh"')
         else:
@@ -172,8 +202,14 @@ def save_sessions(
         cwd = t["cwd"] or str(Path.home())
         agent = t.get("agent_type")
         conv = t.get("agy_conversation")
+        claude_sess = t.get("claude_session")
         if agent == "agy" and conv:
             cmd = f"agy --conversation={conv}; exec zsh"
+            script_lines.append(
+                f'    kitty @ launch --type=tab --tab-title="{title}" --cwd="{cwd}" zsh -l -c "{cmd}"'
+            )
+        elif agent == "claude" and claude_sess:
+            cmd = f"claude --resume {claude_sess}; exec zsh"
             script_lines.append(
                 f'    kitty @ launch --type=tab --tab-title="{title}" --cwd="{cwd}" zsh -l -c "{cmd}"'
             )
@@ -220,7 +256,10 @@ def print_tabs_table(
         cwd = (t.get("cwd") or "~").replace(str(Path.home()), "~")[:30]
         agent = t.get("agent_type")
         if agent == "claude":
-            status = "Claude Code [Resume --continue]"
+            claude_sess = t.get("claude_session")
+            status = (
+                f"Claude [{claude_sess}]" if claude_sess else "Claude Code [--continue]"
+            )
         elif agent == "agy":
             conv = t.get("agy_conversation")
             status = f"AGY [{conv}]" if conv else "Antigravity (agy)"
