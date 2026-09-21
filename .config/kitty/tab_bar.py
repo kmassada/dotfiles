@@ -21,11 +21,23 @@ def get_ssh_hostname() -> str:
         boss = get_boss()
         if boss is not None and boss.active_window is not None:
             title = boss.active_window.title
-            # Look for a typical user@host pattern in the window title
+            # 1. Look for a typical user@host pattern in the window title
             if "@" in title:
                 host_part = title.split("@", 1)[1]
-                # Strip out trailing paths, spaces, or terminal bell characters
-                return host_part.split(":")[0].split(" ")[0].split("\x07")[0]
+                # Strip out trailing paths, spaces, colons, or terminal bell characters
+                cleaned = host_part.split(":")[0].split(" ")[0].split("\x07")[0]
+                if cleaned:
+                    return cleaned
+            # 2. Look for ssh <host> command in the window title
+            if "ssh " in title:
+                parts = title.split("ssh ", 1)[1].split()
+                if parts:
+                    target = parts[-1]
+                    if "@" in target:
+                        target = target.split("@", 1)[1]
+                    cleaned = target.split(":")[0].split(".")[0].split("\x07")[0]
+                    if cleaned:
+                        return cleaned
 
     # Fallback to local machine hostname
     return socket.gethostname().split(".")[0]

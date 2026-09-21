@@ -8,11 +8,13 @@
 from __future__ import annotations
 
 import io
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
 
-import scripts.agy_statusline as statusline
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+import agy_statusline as statusline
 
 
 class TestAgyStatusline(unittest.TestCase):
@@ -38,7 +40,12 @@ class TestAgyStatusline(unittest.TestCase):
         self.assertEqual(statusline.resolve_state_icon("idle")[0], "󰚩")
         self.assertEqual(statusline.resolve_state_icon(None)[0], "󰚩")
 
-    @mock.patch("sys.stdin", io.StringIO('{"model": {"name": "gemini-2.5-pro"}, "workspace": "/Users/kmassada/src/dotfiles", "context_window": {"used_tokens": 125000, "max_tokens": 1048576, "percent": 11.92}}'))
+    @mock.patch(
+        "sys.stdin",
+        io.StringIO(
+            '{"model": {"name": "gemini-2.5-pro"}, "workspace": "/Users/kmassada/src/dotfiles", "context_window": {"used_tokens": 125000, "max_tokens": 1048576, "percent": 11.92}}'
+        ),
+    )
     @mock.patch("sys.stdout", new_callable=io.StringIO)
     def test_main_with_valid_telemetry(self, mock_stdout: io.StringIO) -> None:
         """Verify full statusline output with model, workspace, and context usage."""
