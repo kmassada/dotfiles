@@ -16,26 +16,48 @@ opts = get_options()
 
 
 def get_ssh_hostname() -> str:
-    """Attempt to extract the current hostname from the active kitty window title."""
+    """Attempt to extract the current hostname from the active kitty window or process."""
     with contextlib.suppress(Exception):
         boss = get_boss()
         if boss is not None and boss.active_window is not None:
-            title = boss.active_window.title
-            # 1. Look for a typical user@host pattern in the window title
-            if "@" in title:
-                host_part = title.split("@", 1)[1]
-                # Strip out trailing paths, spaces, colons, or terminal bell characters
-                cleaned = host_part.split(":")[0].split(" ")[0].split("\x07")[0]
-                if cleaned:
-                    return cleaned
-            # 2. Look for ssh <host> command in the window title
-            if "ssh " in title:
-                parts = title.split("ssh ", 1)[1].split()
-                if parts:
-                    target = parts[-1]
-                    if "@" in target:
-                        target = target.split("@", 1)[1]
-                    cleaned = target.split(":")[0].split(".")[0].split("\x07")[0]
+            win = boss.active_window
+
+            # 1. Inspect active foreground processes for ssh / kitten ssh
+            if hasattr(win, "child") and win.child is not None:
+                fg_procs = getattr(win.child, "foreground_processes", []) or []
+                for proc in fg_procs:
+                    cmdline = (
+                        proc.get("cmdline", [])
+                        if isinstance(proc, dict)
+                        else getattr(proc, "cmdline", [])
+                    )
+                    if not cmdline:
+                        continue
+                    for idx, arg in enumerate(cmdline):
+                        if (arg == "ssh" or arg.endswith("/ssh")) and idx + 1 < len(
+                            cmdline
+                        ):
+                            for next_arg in cmdline[idx + 1 :]:
+                                if next_arg.startswith("-") or next_arg == "exec":
+                                    continue
+                                target = next_arg.split("@")[-1]
+                                cleaned = target.split(":")[0].split(".")[0]
+                                if cleaned:
+                                    return cleaned
+
+            # 2. Inspect active window title (e.g. "Kenneths-Mac-mini: ~", "user@host: ~")
+            title = win.title.strip() if win.title else ""
+            if title:
+                if ":" in title:
+                    host_part = title.split(":", 1)[0].strip()
+                    if "@" in host_part:
+                        host_part = host_part.split("@", 1)[1].strip()
+                    cleaned = host_part.split(".")[0].split()[0]
+                    if cleaned:
+                        return cleaned
+                if "@" in title:
+                    host_part = title.split("@", 1)[1].strip()
+                    cleaned = host_part.split(":")[0].split(".")[0].split()[0]
                     if cleaned:
                         return cleaned
 
