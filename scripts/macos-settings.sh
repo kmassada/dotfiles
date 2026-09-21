@@ -353,9 +353,13 @@ apply_settings() {
 
     echo "  → Trackpad: Set 3-finger horizontal swipe (swipe between full-screen apps / spaces)"
     defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 2
+    defaults write com.apple.AppleMultitouchTrackpad TrackpadFourFingerHorizSwipeGesture -int 0
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 2
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadFourFingerHorizSwipeGesture -int 0
     defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 2
+    defaults -currentHost write NSGlobalDomain com.apple.trackpad.fourFingerHorizSwipeGesture -int 0
     defaults write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 2
+    defaults write NSGlobalDomain com.apple.trackpad.fourFingerHorizSwipeGesture -int 0
 
     echo "  → Trackpad: Set 3-finger vertical swipe (up for Mission Control, down for Exposé)"
     defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerVertSwipeGesture -int 2
@@ -372,6 +376,7 @@ apply_settings() {
     fi
 
     echo "${BOLD}Restarting Dock & Finder to activate changes...${RESET}"
+    killall cfprefsd 2>/dev/null || true
     killall Dock 2>/dev/null || true
     killall Finder 2>/dev/null || true
     killall SystemUIServer 2>/dev/null || true
