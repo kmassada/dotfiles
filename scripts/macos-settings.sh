@@ -206,6 +206,7 @@ show_discovery() {
     check_item "Keyboard" "Disable Ctrl+Opt+Space Sw"   "disabled" "com.apple.symbolichotkeys" "61"
     check_item "Trackpad" "Tap to Click"             "true"        "com.apple.AppleMultitouchTrackpad" "Clicking"
     check_item "Trackpad" "Drag with Drag Lock"      "true"        "com.apple.AppleMultitouchTrackpad" "DragLock"
+    check_item "Trackpad" "3-Finger Horiz Swipe"     "Spaces/Apps" "com.apple.AppleMultitouchTrackpad" "TrackpadThreeFingerHorizSwipeGesture"
     check_item "Trackpad" "3-Finger Vertical Swipe"  "Mission/Exposé" "com.apple.AppleMultitouchTrackpad" "TrackpadThreeFingerVertSwipeGesture"
 
     echo ""
@@ -349,6 +350,12 @@ apply_settings() {
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad DragLock -bool true
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Dragging -bool true
     defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -bool false
+
+    echo "  → Trackpad: Set 3-finger horizontal swipe (swipe between full-screen apps / spaces)"
+    defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 2
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 2
+    defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 2
+    defaults write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 2
 
     echo "  → Trackpad: Set 3-finger vertical swipe (up for Mission Control, down for Exposé)"
     defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerVertSwipeGesture -int 2
