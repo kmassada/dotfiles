@@ -64,6 +64,10 @@ sudo apt-get install -y \
     asciinema \
     bat \
     eza \
+    gnupg \
+    pass \
+    pinentry-curses \
+    pinentry-gnome3 \
     kubectx \
     fzf \
     gh \
@@ -91,7 +95,7 @@ mkdir -p ~/bin
 
 # Create a temporary directory for downloads
 TEMP_DIR=$(mktemp -d)
-cd $TEMP_DIR
+cd "$TEMP_DIR" || exit 1
 
 # gemini-cli
 # Instructions: Depends on how it's distributed for Linux. Likely not in apt.
@@ -218,7 +222,7 @@ else
     if [ "$LOCAL_LAZYGIT_TAG" != "$LATEST_LAZYGIT_TAG_CMP" ]; then
         echo "Updating lazygit from $LOCAL_LAZYGIT_TAG to $LATEST_LAZYGIT_TAG_CMP..."
         # Extract version number from tag (e.g., v0.41.0 -> 0.41.0)
-        LAZYGIT_VERSION=$(echo $LATEST_LAZYGIT_TAG | sed 's/v//')
+        LAZYGIT_VERSION="${LATEST_LAZYGIT_TAG#v}"
         LATEST_LAZYGIT_URL="https://github.com/jesseduffield/lazygit/releases/download/${LATEST_LAZYGIT_TAG}/lazygit_${LAZYGIT_VERSION}_linux_x86_64.tar.gz"
         echo "Downloading lazygit from $LATEST_LAZYGIT_URL"
         if wget "$LATEST_LAZYGIT_URL" -O lazygit.tar.gz; then
@@ -256,8 +260,8 @@ echo "Zsh plugins (fzf-tab, zsh-autocomplete, zsh-autosuggestions, zsh-completio
 # sudo apt-get install et -y
 
 # Cleanup temporary directory
-cd ~
-rm -rf $TEMP_DIR
+cd "$HOME" || exit 1
+rm -rf "$TEMP_DIR"
 
 # Nerd Fonts (Cherry-picked minimal installation)
 install_nerd_fonts "Hack" "NerdFontsSymbolsOnly"
@@ -304,5 +308,14 @@ fi
 
 # VSCode Extensions - Install via VSCode UI or code command
 echo "Install VSCode extensions: github.copilot-chat, ms-azuretools.vscode-containers using the VSCode UI or the 'code --install-extension' command."
+
+# Configure GPG permissions for Linux
+if command_exists gpg; then
+    mkdir -p "$HOME/.gnupg"
+    chmod 700 "$HOME/.gnupg"
+    if [ -f "$HOME/.gnupg/gpg-agent.conf" ]; then
+        chmod 600 "$HOME/.gnupg/gpg-agent.conf"
+    fi
+fi
 
 echo "Linux installation script finished."
