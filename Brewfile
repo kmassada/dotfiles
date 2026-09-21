@@ -31,6 +31,8 @@ brew "git-delta"
 brew "glow"
 # CLI for Drive, Gmail, Calendar, Sheets, Docs, Chat, Admin, and more
 brew "googleworkspace-cli"
+# GNU Privacy Guard (OpenPGP)
+brew "gnupg"
 # Command-line pager for JSON data
 brew "jless"
 # Lightweight and flexible command-line JSON processor
@@ -47,6 +49,10 @@ brew "lima"
 brew "markdownlint-cli"
 # Ambitious Vim-fork focused on extensibility and agility
 brew "neovim"
+# Standard UNIX password manager using GPG
+brew "pass"
+# Pinentry dialog for GPG on macOS (Keychain integration)
+brew "pinentry-mac"
 # Tool for managing OCI containers and pods
 brew "podman"
 # Alternative to docker-compose using podman
