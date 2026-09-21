@@ -116,22 +116,22 @@ function zle-line-init {
 }
 zle -N zle-line-init
 
-# Update terminal window and tmux pane titles
+# Set tmux pane title to current directory when idle
 precmd() {
   if [[ -n "$TMUX" ]]; then
+    # ${PWD##*/} gets just the current directory name
     tmux select-pane -T "${PWD##*/}" 
   fi
-  print -Pn "\e]0;%n@%m: %~\a"
 }
 
 # Reset cursor to beam before executing a command
-# And set tmux pane / window title to the command
+# And set tmux pane title to the command
 preexec() {
   echo -ne '\e[5 q'
   if [[ -n "$TMUX" ]]; then
+    # $1 contains the exact command typed, e.g., "vim ~/.zshrc"
     tmux select-pane -T "$1" 
   fi
-  print -Pn "\e]0;%n@%m: $1\a"
 }
 
 # Edit command line in $EDITOR

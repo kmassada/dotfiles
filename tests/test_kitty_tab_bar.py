@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Unit tests for Kitty tab bar helper functions."""
+"""Hermetic unit tests for Kitty tab bar helper functions."""
 
 from __future__ import annotations
 
@@ -79,6 +79,37 @@ class TestKittyTabBar(unittest.TestCase):
         ]
         host = tab_bar.extract_host_from_cmdline(cmdline)
         self.assertEqual(host, "Kenneths-Mac-mini")
+
+    def test_extract_host_port_forwarding_flags(self) -> None:
+        """Verify -L, -D, -R, -E, -I, -e, -B flags do not misidentify port/arg as host."""
+        cases = [
+            (["ssh", "-L", "8080:localhost:80", "prod-box"], "prod-box"),
+            (["ssh", "-D", "1080", "prod-box"], "prod-box"),
+            (["ssh", "-R", "9000:localhost:9000", "prod-box"], "prod-box"),
+            (["ssh", "-E", "/tmp/ssh.log", "prod-box"], "prod-box"),
+            (["ssh", "-e", "none", "prod-box"], "prod-box"),
+            (["ssh", "-B", "en0", "prod-box"], "prod-box"),
+        ]
+        for cmdline, expected in cases:
+            with self.subTest(cmdline=cmdline):
+                self.assertEqual(tab_bar.extract_host_from_cmdline(cmdline), expected)
+
+    def test_extract_host_non_ssh_with_double_dash_returns_none(self) -> None:
+        """Non-SSH commands containing '--' must not return false hostnames."""
+        non_ssh_commands = [
+            ["git", "checkout", "--", "README.md"],
+            ["cargo", "run", "--", "input.txt"],
+            ["docker", "exec", "-it", "ctr", "--", "python3"],
+            ["npm", "run", "build", "--", "--prod"],
+        ]
+        for cmdline in non_ssh_commands:
+            with self.subTest(cmdline=cmdline):
+                self.assertIsNone(tab_bar.extract_host_from_cmdline(cmdline))
+
+    def test_extract_host_empty_or_none(self) -> None:
+        """Empty sequence or None returns None without error."""
+        self.assertIsNone(tab_bar.extract_host_from_cmdline(None))
+        self.assertIsNone(tab_bar.extract_host_from_cmdline([]))
 
     def test_extract_host_from_simple_ssh(self) -> None:
         cmdline = ["ssh", "work-laptop"]

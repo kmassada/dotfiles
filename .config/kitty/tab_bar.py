@@ -16,16 +16,28 @@ from kitty.utils import color_as_int
 opts = get_options()
 
 
-def extract_host_from_cmdline(cmdline: Sequence[str]) -> str | None:
+def extract_host_from_cmdline(cmdline: Sequence[str] | None) -> str | None:
     """Extract destination host from an SSH or kitten ssh process command line."""
     if not cmdline:
         return None
 
-    # Check for '--' delimiter (common in kitten ssh forwarding)
-    if "--" in cmdline:
-        dash_idx = list(cmdline).index("--")
-        if dash_idx + 1 < len(cmdline):
-            candidate = cmdline[dash_idx + 1]
+    # 1. First scan for an ssh or kitten invocation
+    ssh_idx = -1
+    for idx, arg in enumerate(cmdline):
+        if arg in ("ssh", "kitten") or arg.endswith(("/ssh", "/kitten")):
+            ssh_idx = idx
+            break
+
+    if ssh_idx == -1:
+        return None
+
+    sub_cmdline = cmdline[ssh_idx + 1 :]
+
+    # 2. Check for '--' delimiter occurring after ssh invocation
+    if "--" in sub_cmdline:
+        dash_idx = sub_cmdline.index("--")
+        if dash_idx + 1 < len(sub_cmdline):
+            candidate = sub_cmdline[dash_idx + 1]
             if (
                 candidate
                 and not candidate.startswith("-")
@@ -33,33 +45,32 @@ def extract_host_from_cmdline(cmdline: Sequence[str]) -> str | None:
             ):
                 return candidate.split("@")[-1].split(":")[0].split(".")[0]
 
-    # Find position of ssh or kitten invocation
-    ssh_idx = -1
-    for idx, arg in enumerate(cmdline):
-        if arg == "ssh" or arg.endswith("/ssh") or arg == "kitten":
-            ssh_idx = idx
-            break
-
-    if ssh_idx == -1:
-        return None
-
+    # 3. Complete set of OpenSSH argument-taking short and long options
     flags_with_val = {
+        "-b",
+        "-c",
+        "-e",
+        "-i",
+        "-l",
+        "-m",
         "-o",
         "-p",
-        "-i",
+        "-w",
+        "-B",
+        "-D",
+        "-E",
         "-F",
-        "-l",
-        "-c",
-        "-b",
-        "-m",
+        "-I",
+        "-J",
+        "-L",
         "-O",
+        "-Q",
+        "-R",
         "-S",
         "-W",
-        "-w",
-        "-J",
     }
     skip_next = False
-    for arg in cmdline[ssh_idx + 1 :]:
+    for arg in sub_cmdline:
         if skip_next:
             skip_next = False
             continue
@@ -72,15 +83,15 @@ def extract_host_from_cmdline(cmdline: Sequence[str]) -> str | None:
             or arg in ("ssh", "exec", "sh", "bash", "zsh")
         ):
             continue
-        cleaned = arg.split("@")[-1].split(":")[0].split(".")[0]
-        if cleaned:
-            return cleaned
+        parts = arg.split("@")[-1].split(":")[0].split(".")[0].split()
+        if parts:
+            return parts[0]
 
     return None
 
 
 def get_ssh_hostname() -> str:
-    """Attempt to extract the current hostname from the active kitty window or process."""
+    """Attempt to extract current hostname from active window process or title."""
     with contextlib.suppress(Exception):
         boss = get_boss()
         if boss is not None and boss.active_window is not None:
@@ -99,21 +110,13 @@ def get_ssh_hostname() -> str:
                     if host:
                         return host
 
-            # 2. Inspect active window title (e.g. "Kenneths-Mac-mini: ~", "user@host: ~")
+            # 2. Inspect active window title only when structured as user@host
             title = win.title.strip() if win.title else ""
-            if title:
-                if ":" in title:
-                    host_part = title.split(":", 1)[0].strip()
-                    if "@" in host_part:
-                        host_part = host_part.split("@", 1)[1].strip()
-                    cleaned = host_part.split(".")[0].split()[0]
-                    if cleaned:
-                        return cleaned
-                if "@" in title:
-                    host_part = title.split("@", 1)[1].strip()
-                    cleaned = host_part.split(":")[0].split(".")[0].split()[0]
-                    if cleaned:
-                        return cleaned
+            if title and "@" in title:
+                host_part = title.split("@", 1)[1].strip()
+                cleaned = host_part.split(":")[0].split(".")[0].split()[0]
+                if cleaned:
+                    return cleaned
 
     # Fallback to local machine hostname
     return socket.gethostname().split(".")[0]
