@@ -309,12 +309,33 @@ fi
 # VSCode Extensions - Install via VSCode UI or code command
 echo "Install VSCode extensions: github.copilot-chat, ms-azuretools.vscode-containers using the VSCode UI or the 'code --install-extension' command."
 
-# Configure GPG permissions for Linux
+# Configure GPG permissions and pinentry for Linux
 if command_exists gpg; then
+    echo "Configuring GPG agent and permissions..."
     mkdir -p "$HOME/.gnupg"
     chmod 700 "$HOME/.gnupg"
-    if [ -f "$HOME/.gnupg/gpg-agent.conf" ]; then
-        chmod 600 "$HOME/.gnupg/gpg-agent.conf"
+
+    PINENTRY_LINUX=""
+    if command_exists pinentry-gnome3; then
+        PINENTRY_LINUX="$(command -v pinentry-gnome3)"
+    elif command_exists pinentry-curses; then
+        PINENTRY_LINUX="$(command -v pinentry-curses)"
+    elif command_exists pinentry; then
+        PINENTRY_LINUX="$(command -v pinentry)"
+    fi
+
+    {
+        if [ -n "$PINENTRY_LINUX" ]; then
+            echo "pinentry-program $PINENTRY_LINUX"
+        fi
+        if [ -f "$HOME/src/dotfiles/.gnupg/gpg-agent.conf" ]; then
+            cat "$HOME/src/dotfiles/.gnupg/gpg-agent.conf"
+        fi
+    } > "$HOME/.gnupg/gpg-agent.conf"
+
+    chmod 600 "$HOME/.gnupg/gpg-agent.conf"
+    if command_exists gpg-connect-agent; then
+        gpg-connect-agent reloadagent /bye 2>/dev/null || true
     fi
 fi
 

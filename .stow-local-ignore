@@ -7,4 +7,5 @@
 ^\.git.*
 ^scripts$
 ^agents$
+^\.gnupg$
 ^\.stow-local-ignore$
