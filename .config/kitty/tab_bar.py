@@ -1,5 +1,6 @@
 import contextlib
 import socket
+from collections.abc import Sequence
 
 from kitty.boss import get_boss
 from kitty.fast_data_types import Screen, get_options
@@ -13,6 +14,69 @@ from kitty.tab_bar import (
 from kitty.utils import color_as_int
 
 opts = get_options()
+
+
+def extract_host_from_cmdline(cmdline: Sequence[str]) -> str | None:
+    """Extract destination host from an SSH or kitten ssh process command line."""
+    if not cmdline:
+        return None
+
+    # Check for '--' delimiter (common in kitten ssh forwarding)
+    if "--" in cmdline:
+        dash_idx = list(cmdline).index("--")
+        if dash_idx + 1 < len(cmdline):
+            candidate = cmdline[dash_idx + 1]
+            if (
+                candidate
+                and not candidate.startswith("-")
+                and candidate not in ("exec", "sh", "bash", "zsh")
+            ):
+                return candidate.split("@")[-1].split(":")[0].split(".")[0]
+
+    # Find position of ssh or kitten invocation
+    ssh_idx = -1
+    for idx, arg in enumerate(cmdline):
+        if arg == "ssh" or arg.endswith("/ssh") or arg == "kitten":
+            ssh_idx = idx
+            break
+
+    if ssh_idx == -1:
+        return None
+
+    flags_with_val = {
+        "-o",
+        "-p",
+        "-i",
+        "-F",
+        "-l",
+        "-c",
+        "-b",
+        "-m",
+        "-O",
+        "-S",
+        "-W",
+        "-w",
+        "-J",
+    }
+    skip_next = False
+    for arg in cmdline[ssh_idx + 1 :]:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg in flags_with_val:
+            skip_next = True
+            continue
+        if (
+            arg.startswith("-")
+            or "=" in arg
+            or arg in ("ssh", "exec", "sh", "bash", "zsh")
+        ):
+            continue
+        cleaned = arg.split("@")[-1].split(":")[0].split(".")[0]
+        if cleaned:
+            return cleaned
+
+    return None
 
 
 def get_ssh_hostname() -> str:
@@ -31,19 +95,9 @@ def get_ssh_hostname() -> str:
                         if isinstance(proc, dict)
                         else getattr(proc, "cmdline", [])
                     )
-                    if not cmdline:
-                        continue
-                    for idx, arg in enumerate(cmdline):
-                        if (arg == "ssh" or arg.endswith("/ssh")) and idx + 1 < len(
-                            cmdline
-                        ):
-                            for next_arg in cmdline[idx + 1 :]:
-                                if next_arg.startswith("-") or next_arg == "exec":
-                                    continue
-                                target = next_arg.split("@")[-1]
-                                cleaned = target.split(":")[0].split(".")[0]
-                                if cleaned:
-                                    return cleaned
+                    host = extract_host_from_cmdline(cmdline)
+                    if host:
+                        return host
 
             # 2. Inspect active window title (e.g. "Kenneths-Mac-mini: ~", "user@host: ~")
             title = win.title.strip() if win.title else ""
