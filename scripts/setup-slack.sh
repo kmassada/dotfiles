@@ -20,13 +20,13 @@
 
 set -eo pipefail
 
-BOLD="$(tput bold 2>/dev/null || echo "")"
-GREEN="$(tput setaf 2 2>/dev/null || echo "")"
-YELLOW="$(tput setaf 3 2>/dev/null || echo "")"
-BLUE="$(tput setaf 4 2>/dev/null || echo "")"
-CYAN="$(tput setaf 6 2>/dev/null || echo "")"
-RED="$(tput setaf 1 2>/dev/null || echo "")"
-RESET="$(tput sgr0 2>/dev/null || echo "")"
+BOLD=$'\033[1m'
+GREEN=$'\033[32m'
+YELLOW=$'\033[33m'
+BLUE=$'\033[34m'
+CYAN=$'\033[36m'
+RED=$'\033[31m'
+RESET=$'\033[0m'
 
 log_info()    { echo -e "${BLUE}ℹ️  ${BOLD}$*${RESET}"; }
 log_success() { echo -e "${GREEN}✅ ${BOLD}$*${RESET}"; }
@@ -112,7 +112,17 @@ get_active_token() {
         return 0
     fi
 
-    # 3. Bitwarden Secrets Manager (bws)
+    # 3. Password Store (pass)
+    if command -v pass &>/dev/null; then
+        local pass_val
+        pass_val="$(pass show ai-agents/slack/bot_token 2>/dev/null | head -n 1 || true)"
+        if [[ -n "$pass_val" ]]; then
+            echo "$pass_val"
+            return 0
+        fi
+    fi
+
+    # 4. Bitwarden Secrets Manager (bws)
     if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
         local bws_val
         bws_val="$(python3 -c '
@@ -247,6 +257,17 @@ audit_slack() {
         file_status="${GREEN}Present ($AUTH_FILE)${RESET}"
     fi
     printf "%-24s: %b\n" "Local Auth File" "$file_status"
+
+    # Check Password Store (pass)
+    local pass_status="${RED}Not Installed${RESET}"
+    if command -v pass &>/dev/null; then
+        if pass ai-agents/slack/bot_token &>/dev/null; then
+            pass_status="${GREEN}Populated (ai-agents/slack)${RESET}"
+        else
+            pass_status="${YELLOW}Installed (ai-agents/slack not set)${RESET}"
+        fi
+    fi
+    printf "%-24s: %b\n" "Password Store (pass)" "$pass_status"
 
     # Check Bitwarden
     local bw_status="Not Available"
@@ -416,7 +437,16 @@ EOF2
         log_success "Updated macOS launchctl environment variables"
     fi
 
-    # 3. Sync to Doppler if logged in
+    # 3. Save to Password Store (pass) if available
+    if command -v pass &>/dev/null && [[ -n "$token" ]]; then
+        echo "$token" | pass insert -f -m ai-agents/slack/bot_token &>/dev/null || true
+        echo "$team_id" | pass insert -f -m ai-agents/slack/team_id &>/dev/null || true
+        echo "$team_name" | pass insert -f -m ai-agents/slack/workspace_name &>/dev/null || true
+        echo "$team_url" | pass insert -f -m ai-agents/slack/workspace_url &>/dev/null || true
+        log_success "Synced credentials to password store (ai-agents/slack)"
+    fi
+
+    # 4. Sync to Doppler if logged in
     if command -v doppler &>/dev/null && doppler me &>/dev/null; then
         log_info "Syncing credentials to Doppler..."
         if doppler configure get project &>/dev/null; then
