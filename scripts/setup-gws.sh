@@ -232,7 +232,13 @@ audit_gws() {
         fi
     fi
     printf "%-26s: %b\n" "gws Auth State" "$gws_auth_status"
-    printf "%-26s: %s\n" "Local Auth File" "$AUTH_FILE"
+
+    # 6. Check Local Auth File
+    local file_status="${YELLOW}Not Present${RESET}"
+    if [[ -f "$AUTH_FILE" ]]; then
+        file_status="${GREEN}Present ($AUTH_FILE)${RESET}"
+    fi
+    printf "%-26s: %b\n" "Local Auth File" "$file_status"
     echo "----------------------------------------------------------------------"
     echo ""
 
