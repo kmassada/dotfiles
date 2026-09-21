@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# setup-slack.sh - Repeatable Slack Workspace & Bot Credential Engine
+# setup-slack.sh - Repeatable Slack Workspace & Zero-Disk Credential Engine
 # ==============================================================================
-# Bootstraps, audits, and manages Slack credentials across multi-backend vaults:
+# Bootstraps, audits, and manages Slack credentials across vaults:
 #   1. Resolves tokens from pass, Bitwarden, GCP Secret Manager, or memory
 #   2. Validates Slack bot tokens (xoxb-...) against the Slack API (auth.test)
 #   3. Auto-discovers workspace name, team ID, and bot identity
-#   4. Injects tokens into runtime environment (launchctl, pass, Bitwarden)
+#   4. Injects tokens directly into pass (ai-agents/slack/*) and macOS launchctl
 #   5. Verifies MCP configuration in ~/.gemini/config/mcp_config.json
 #
 # Usage:
-#   ./setup-slack.sh                  # Audit current multi-backend credential status
+#   ./setup-slack.sh                  # Audit current credential & token validity
 #   ./setup-slack.sh --apply          # Configure or update Slack credentials
 #   ./setup-slack.sh --token xoxb-... # Set token directly from CLI
-#   ./setup-slack.sh --no-disk        # Zero-disk mode (do not write ~/.local file)
 #   ./setup-slack.sh --copy-manifest  # Copy Slack App Manifest JSON to clipboard
 # ==============================================================================
 
@@ -35,12 +34,10 @@ log_error()   { echo -e "${RED}❌ ${BOLD}$*${RESET}"; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST_FILE="$SCRIPT_DIR/slack-manifest.json"
-AUTH_FILE="$HOME/.local/slack_auth.zsh"
 MCP_CONFIG="$HOME/.gemini/config/mcp_config.json"
 
 APPLY=false
 CLI_TOKEN=""
-NO_DISK=false
 COPY_MANIFEST=false
 
 usage() {
@@ -50,7 +47,6 @@ ${BOLD}Usage:${RESET} $0 [OPTIONS]
 ${BOLD}Options:${RESET}
   --apply               Guide interactive setup and save credentials
   --token <xoxb-...>    Provide Slack Bot Token directly
-  --no-disk             Do not write plaintext ~/.local/slack_auth.zsh file
   --copy-manifest       Copy slack-manifest.json to macOS clipboard and exit
   -h, --help            Show this help message
 
@@ -58,7 +54,6 @@ ${BOLD}Examples:${RESET}
   $0                    # Audit current configuration & token validity
   $0 --apply            # Interactive setup / refresh
   $0 --token "xoxb-..." # Configure non-interactively with a token
-  $0 --apply --no-disk  # Zero-disk mode (in-memory & vault only)
 USAGE
     exit 0
 }
@@ -67,7 +62,6 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --apply)           APPLY=true; shift ;;
         --token)           CLI_TOKEN="$2"; APPLY=true; shift 2 ;;
-        --no-disk)         NO_DISK=true; shift ;;
         --copy-manifest)   COPY_MANIFEST=true; shift ;;
         -h|--help)         usage ;;
         *)                 log_error "Unknown option: $1"; usage ;;
@@ -85,18 +79,6 @@ if [ "$COPY_MANIFEST" = true ]; then
         log_error "Manifest file not found at: $MANIFEST_FILE"
         exit 1
     fi
-fi
-
-# Load Bitwarden credentials if available
-if [ -f "$HOME/.local/bw_key.zsh" ]; then
-    # shellcheck disable=SC1090
-    source "$HOME/.local/bw_key.zsh" 2>/dev/null || true
-fi
-
-# Load existing credentials if available
-if [ -f "$AUTH_FILE" ] && [ "$NO_DISK" = false ]; then
-    # shellcheck disable=SC1090
-    source "$AUTH_FILE" 2>/dev/null || true
 fi
 
 get_active_token() {
@@ -122,51 +104,47 @@ get_active_token() {
         fi
     fi
 
-    # 4. Bitwarden Secrets Manager (bws)
+    # 4. macOS launchctl environment
+    if command -v launchctl &>/dev/null; then
+        local lctl_val
+        lctl_val="$(launchctl getenv SLACK_BOT_TOKEN 2>/dev/null || true)"
+        if [[ -n "$lctl_val" ]]; then
+            echo "$lctl_val"
+            return 0
+        fi
+    fi
+
+    # 5. Bitwarden Secrets Manager (bws)
     if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
         local bws_val
-        bws_val="$(python3 -c '
-import subprocess, json, os
-proj = os.environ.get("BWS_PROJECT_ID")
-cmd = ["bws", "secret", "list"] + ([proj] if proj else [])
+        bws_val="$(bws secret list 2>/dev/null | python3 -c "
+import sys, json
 try:
-    res = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if res.returncode == 0 and res.stdout.strip():
-        secrets = json.loads(res.stdout)
-        for s in secrets:
-            if s.get("key") in ("slack_agents", "slack", "SLACK_BOT_TOKEN"):
-                val = s.get("value", "")
-                try:
-                    data = json.loads(val)
-                    if isinstance(data, dict):
-                        for k in ("bot_token", "SLACK_BOT_TOKEN", "token"):
-                            if data.get(k):
-                                print(data[k])
-                                exit(0)
-                except json.JSONDecodeError:
-                    if s.get("key") == "SLACK_BOT_TOKEN":
-                        print(val)
-                        exit(0)
+    data = json.load(sys.stdin)
+    for s in data:
+        if s.get('key') == 'SLACK_BOT_TOKEN':
+            print(s.get('value', ''))
+            sys.exit(0)
 except Exception:
     pass
-' 2>/dev/null || true)"
+" 2>/dev/null || true)"
         if [[ -n "$bws_val" ]]; then
             echo "$bws_val"
             return 0
         fi
     fi
 
-    # 4. Bitwarden CLI (bw)
+    # 6. Bitwarden CLI (bw)
     if command -v bw &>/dev/null; then
         local bw_val
-        bw_val="$(bw get password "SLACK_BOT_TOKEN" 2>/dev/null || bw get notes "SLACK_BOT_TOKEN" 2>/dev/null || true)"
+        bw_val="$(bw get password "SLACK_BOT_TOKEN" 2>/dev/null || true)"
         if [[ -n "$bw_val" ]]; then
             echo "$bw_val"
             return 0
         fi
     fi
 
-    # 5. Google Cloud Secret Manager (gcloud)
+    # 7. GCP Secret Manager
     if command -v gcloud &>/dev/null; then
         local gcp_val
         gcp_val="$(gcloud secrets versions access latest --secret="SLACK_BOT_TOKEN" 2>/dev/null || true)"
@@ -241,13 +219,6 @@ audit_slack() {
     printf "%-24s: %s\n" "Team ID" "$team_id_display"
     printf "%-24s: %s\n" "Bot Identity" "$bot_display"
 
-    # Check Local Auth File
-    local file_status="${YELLOW}Not Present${RESET}"
-    if [[ -f "$AUTH_FILE" ]]; then
-        file_status="${GREEN}Present ($AUTH_FILE)${RESET}"
-    fi
-    printf "%-24s: %b\n" "Local Auth File" "$file_status"
-
     # Check Password Store (pass)
     local pass_status="${RED}Not Installed${RESET}"
     if command -v pass &>/dev/null; then
@@ -308,7 +279,7 @@ audit_slack() {
 
 apply_slack() {
     echo ""
-    echo "${BOLD}${CYAN}⚙️  Bootstrapping Slack Workspace & Bot Credentials${RESET}"
+    echo "${BOLD}${CYAN}⚙️  Bootstrapping Slack Workspace & Zero-Disk Credentials${RESET}"
     echo "======================================================================"
 
     local token="$CLI_TOKEN"
@@ -389,34 +360,14 @@ apply_slack() {
     echo "  • URL:       $team_url"
     echo ""
 
-    # 1. Save to ~/.local/slack_auth.zsh unless --no-disk
-    if [ "$NO_DISK" = false ]; then
-        mkdir -p "$(dirname "$AUTH_FILE")"
-        cat << EOF2 > "$AUTH_FILE"
-# ==============================================================================
-# slack_auth.zsh - Slack Credentials for Antigravity & MCP
-# Auto-generated by setup-slack.sh on $(date)
-# ==============================================================================
-export SLACK_BOT_TOKEN="$token"
-export SLACK_TEAM_ID="$team_id"
-export SLACK_WORKSPACE_NAME="$team_name"
-export SLACK_WORKSPACE_URL="$team_url"
-EOF2
-        chmod 600 "$AUTH_FILE"
-        log_success "Saved credentials to $AUTH_FILE (mode 0600)"
-        echo "  (Automatically loaded by ~/.zshrc for interactive shells)"
-    else
-        log_info "Zero-Disk mode enabled: skipped writing $AUTH_FILE"
-    fi
-
-    # 2. Update macOS session environment
+    # 1. Update macOS session environment
     if command -v launchctl &>/dev/null; then
         launchctl setenv SLACK_BOT_TOKEN "$token"
         launchctl setenv SLACK_TEAM_ID "$team_id"
         log_success "Updated macOS launchctl environment variables"
     fi
 
-    # 3. Save to Password Store (pass) if available
+    # 2. Save to Password Store (pass)
     if command -v pass &>/dev/null && [[ -n "$token" ]]; then
         echo "$token" | pass insert -f -m ai-agents/slack/bot_token &>/dev/null || true
         echo "$team_id" | pass insert -f -m ai-agents/slack/team_id &>/dev/null || true
@@ -425,7 +376,7 @@ EOF2
         log_success "Synced credentials to password store (ai-agents/slack)"
     fi
 
-    # 4. Ensure ~/.gemini/config/mcp_config.json has Slack MCP configured
+    # 3. Ensure ~/.gemini/config/mcp_config.json has Slack MCP configured
     if [[ -f "$MCP_CONFIG" ]]; then
         log_success "MCP configuration verified at $MCP_CONFIG"
     fi
