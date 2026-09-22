@@ -89,67 +89,27 @@ get_active_token() {
     fi
 
     # 2. Process Environment
-    if [[ -n "$SLACK_BOT_TOKEN" ]]; then
+    if [[ -n "${SLACK_BOT_TOKEN:-}" ]]; then
         echo "$SLACK_BOT_TOKEN"
         return 0
     fi
 
-    # 3. Password Store (pass)
+    # 3. Credential CLI (cred / creds)
+    if command -v cred &>/dev/null; then
+        local cred_val
+        cred_val="$(cred get slack/bot_token 2>/dev/null || true)"
+        if [[ -n "$cred_val" ]]; then
+            echo "$cred_val"
+            return 0
+        fi
+    fi
+
+    # 4. Password Store fallback (pass)
     if command -v pass &>/dev/null; then
         local pass_val
         pass_val="$(pass show ai-agents/slack/bot_token 2>/dev/null | head -n 1 || true)"
         if [[ -n "$pass_val" ]]; then
             echo "$pass_val"
-            return 0
-        fi
-    fi
-
-    # 4. macOS launchctl environment
-    if command -v launchctl &>/dev/null; then
-        local lctl_val
-        lctl_val="$(launchctl getenv SLACK_BOT_TOKEN 2>/dev/null || true)"
-        if [[ -n "$lctl_val" ]]; then
-            echo "$lctl_val"
-            return 0
-        fi
-    fi
-
-    # 5. Bitwarden Secrets Manager (bws)
-    if command -v bws &>/dev/null && [[ -n "$BWS_ACCESS_TOKEN" ]]; then
-        local bws_val
-        bws_val="$(bws secret list 2>/dev/null | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    for s in data:
-        if s.get('key') == 'SLACK_BOT_TOKEN':
-            print(s.get('value', ''))
-            sys.exit(0)
-except Exception:
-    pass
-" 2>/dev/null || true)"
-        if [[ -n "$bws_val" ]]; then
-            echo "$bws_val"
-            return 0
-        fi
-    fi
-
-    # 6. Bitwarden CLI (bw)
-    if command -v bw &>/dev/null; then
-        local bw_val
-        bw_val="$(bw get password "SLACK_BOT_TOKEN" 2>/dev/null || true)"
-        if [[ -n "$bw_val" ]]; then
-            echo "$bw_val"
-            return 0
-        fi
-    fi
-
-    # 7. GCP Secret Manager
-    if command -v gcloud &>/dev/null; then
-        local gcp_val
-        gcp_val="$(gcloud secrets versions access latest --secret="SLACK_BOT_TOKEN" 2>/dev/null || true)"
-        if [[ -n "$gcp_val" ]]; then
-            echo "$gcp_val"
             return 0
         fi
     fi
@@ -218,6 +178,12 @@ audit_slack() {
     printf "%-24s: %b\n" "Workspace Name" "$team_display"
     printf "%-24s: %s\n" "Team ID" "$team_id_display"
     printf "%-24s: %s\n" "Bot Identity" "$bot_display"
+    # Check Credential CLI (cred)
+    local cred_status="${RED}Not Installed${RESET}"
+    if command -v cred &>/dev/null; then
+        cred_status="${GREEN}Installed (~/.local/bin/cred)${RESET}"
+    fi
+    printf "%-24s: %b\n" "Credential CLI (cred)" "$cred_status"
 
     # Check Password Store (pass)
     local pass_status="${RED}Not Installed${RESET}"
@@ -360,19 +326,18 @@ apply_slack() {
     echo "  • URL:       $team_url"
     echo ""
 
-    # 1. Update macOS session environment
-    if command -v launchctl &>/dev/null; then
-        launchctl setenv SLACK_BOT_TOKEN "$token"
-        launchctl setenv SLACK_TEAM_ID "$team_id"
-        log_success "Updated macOS launchctl environment variables"
-    fi
-
-    # 2. Save to Password Store (pass)
-    if command -v pass &>/dev/null && [[ -n "$token" ]]; then
-        echo "$token" | pass insert -f -m ai-agents/slack/bot_token &>/dev/null || true
-        echo "$team_id" | pass insert -f -m ai-agents/slack/team_id &>/dev/null || true
+    # 1. Save to Vault via cred CLI (or pass fallback)
+    if command -v cred &>/dev/null && [[ -n "$token" ]]; then
+        printf '%s' "$token"     | cred set slack/bot_token &>/dev/null || true
+        printf '%s' "$team_id"   | cred set slack/team_id &>/dev/null || true
+        printf '%s' "$team_name" | cred set slack/workspace_name &>/dev/null || true
+        printf '%s' "$team_url"  | cred set slack/workspace_url &>/dev/null || true
+        log_success "Synced credentials to vault via cred (ai-agents/slack)"
+    elif command -v pass &>/dev/null && [[ -n "$token" ]]; then
+        echo "$token"     | pass insert -f -m ai-agents/slack/bot_token &>/dev/null || true
+        echo "$team_id"   | pass insert -f -m ai-agents/slack/team_id &>/dev/null || true
         echo "$team_name" | pass insert -f -m ai-agents/slack/workspace_name &>/dev/null || true
-        echo "$team_url" | pass insert -f -m ai-agents/slack/workspace_url &>/dev/null || true
+        echo "$team_url"  | pass insert -f -m ai-agents/slack/workspace_url &>/dev/null || true
         log_success "Synced credentials to password store (ai-agents/slack)"
     fi
 

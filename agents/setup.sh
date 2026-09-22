@@ -167,6 +167,16 @@ if [ "$APPLY" = true ]; then
     fi
     log_success "Synchronized $SKILL_COUNT skills into $SKILLS_DIR"
 
+    # Ensure local credential CLI (cred / creds) is linked into ~/.local/bin
+    cred_src="$SKILLS_DIR/managing-credentials/scripts/get_credential.py"
+    if [ -f "$cred_src" ]; then
+        mkdir -p "$HOME/.local/bin"
+        chmod +x "$cred_src"
+        ln -sf "$cred_src" "$HOME/.local/bin/cred"
+        ln -sf "$HOME/.local/bin/cred" "$HOME/.local/bin/creds"
+        log_success "Configured local credential CLI (cred / creds) in ~/.local/bin"
+    fi
+
     # Install rules
     RULE_COUNT=0
     if [ -d "$CACHE_DIR/rules" ]; then
@@ -439,8 +449,17 @@ else
         log_warn "GEMINI_API_KEY is not currently set (Provide with: $0 --apply --key <YOUR_KEY>)"
     fi
 
-    if [ -n "${SLACK_BOT_TOKEN:-}" ] || ([ -f "$SLACK_ZSH" ] && grep -q "SLACK_BOT_TOKEN" "$SLACK_ZSH"); then
-        log_success "Slack MCP credentials are configured ($SLACK_ZSH)"
+    slack_configured=false
+    if [ -n "${SLACK_BOT_TOKEN:-}" ]; then
+        slack_configured=true
+    elif command -v cred &>/dev/null && cred get slack/bot_token &>/dev/null; then
+        slack_configured=true
+    elif [ -f "$SLACK_ZSH" ] && grep -q "SLACK_BOT_TOKEN" "$SLACK_ZSH"; then
+        slack_configured=true
+    fi
+
+    if [ "$slack_configured" = true ]; then
+        log_success "Slack MCP credentials are configured"
     else
         log_warn "Slack credentials not configured (Run: scripts/setup-slack.sh --apply to configure)"
     fi
