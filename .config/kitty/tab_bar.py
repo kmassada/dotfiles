@@ -141,6 +141,10 @@ def draw_tab(
     white = as_rgb(color_as_int(opts.color15))
     lighter_gray = as_rgb(0x3A3A3A)
 
+    hostname = get_ssh_hostname() if is_last else ""
+    chip_cells = (len(f" {hostname} ") + 1) if hostname else 0
+    trailing_cells = (2 if tab.is_active else 1) + chip_cells
+
     # 1. Always draw the white separator between tabs
     if index > 1:
         screen.cursor.fg = white
@@ -162,7 +166,14 @@ def draw_tab(
         screen.cursor.fg = active_fg
         screen.cursor.bg = active_bg
         screen.draw(" ")
+        title_start = screen.cursor.x
         draw_title(draw_data, screen, tab, index, max_title_length=max_title_length)
+        # Kitty's draw_title only exposes max_title_length to the template and does
+        # not clip single-line titles; rewind the cursor like draw_tab_with_powerline.
+        extra = screen.cursor.x + trailing_cells - before - max_title_length
+        if extra > 0 and screen.cursor.x > title_start:
+            screen.cursor.x = max(title_start, screen.cursor.x - extra - 1)
+            screen.draw("…")
         screen.draw(" ")
 
         # Active Tab Tail: Green wedge on Grey background
@@ -179,14 +190,27 @@ def draw_tab(
         screen.cursor.bg = inactive_bg
         screen.cursor.fg = inactive_fg
         screen.draw(" ")
+        title_start = screen.cursor.x
         draw_title(draw_data, screen, tab, index, max_title_length=max_title_length)
+        extra = screen.cursor.x + trailing_cells - before - max_title_length
+        if extra > 0 and screen.cursor.x > title_start:
+            screen.cursor.x = max(title_start, screen.cursor.x - extra - 1)
+            screen.draw("…")
         screen.draw(" ")
 
     # Save the cursor position for the end of the tab's clickable area
     end = screen.cursor.x
 
     if is_last:
-        draw_right_status(screen, draw_data, tab.is_active)
+        # Kitty's layout pass (extra_data.for_layout) measures each tab's ideal
+        # width from screen.cursor.x after draw_tab returns. Running draw_right_status
+        # during layout fills to screen.columns and tricks Kitty into thinking the
+        # last tab wants the full window width, which triggers Kitty's red ' …'
+        # overflow cutoff whenever the last tab is selected.
+        if extra_data.for_layout:
+            screen.cursor.x += chip_cells
+        else:
+            draw_right_status(screen, draw_data, tab.is_active)
 
     return end
 

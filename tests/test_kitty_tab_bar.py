@@ -203,5 +203,98 @@ class TestRightStatus(unittest.TestCase):
         self.assertEqual(len(screen.rendered()), 40)
 
 
+class TestDrawTabLayoutAndTruncation(unittest.TestCase):
+    """Ensure draw_tab does not inflate layout pass width or overflow max_title_length."""
+
+    def setUp(self) -> None:
+        self.draw_data = MagicMock()
+        self._host_patch = mock_host("makz-mac")
+        self._host_patch.start()
+        self.addCleanup(self._host_patch.stop)
+
+        def fake_draw_title(
+            _draw_data: object,
+            screen: FakeScreen,
+            tab: object,
+            _index: int,
+            max_title_length: int = 0,
+        ) -> None:
+            del max_title_length
+            screen.draw(getattr(tab, "title", ""))
+
+        self._title_patch = unittest.mock.patch.object(
+            tab_bar, "draw_title", side_effect=fake_draw_title
+        )
+        self._title_patch.start()
+        self.addCleanup(self._title_patch.stop)
+
+    def test_layout_pass_on_last_tab_does_not_inflate_to_screen_columns(self) -> None:
+        """Regression: for_layout=True must not fill to screen.columns on the last tab."""
+        screen = FakeScreen(280)
+        tab = MagicMock(is_active=True, title="~")
+        extra_data = MagicMock(for_layout=True)
+
+        end = tab_bar.draw_tab(
+            self.draw_data,
+            screen,
+            tab,
+            before=0,
+            max_title_length=278,
+            index=8,
+            is_last=True,
+            extra_data=extra_data,
+        )
+
+        # Active non-first tab '~' is 8 cells ('   ~ ') plus 11 cells for ' makz-mac '
+        self.assertEqual(end, 8)
+        self.assertEqual(screen.cursor.x, 19)
+        self.assertLess(screen.cursor.x, screen.columns)
+
+    def test_render_pass_on_last_tab_draws_both_tab_and_right_chip(self) -> None:
+        """When for_layout=False, the last tab draws its body and pins the right chip."""
+        screen = FakeScreen(60)
+        screen.cursor.x = 20
+        tab = MagicMock(is_active=True, title="~")
+        extra_data = MagicMock(for_layout=False)
+
+        end = tab_bar.draw_tab(
+            self.draw_data,
+            screen,
+            tab,
+            before=20,
+            max_title_length=30,
+            index=8,
+            is_last=True,
+            extra_data=extra_data,
+        )
+
+        self.assertEqual(end, 28)
+        self.assertEqual(screen.cursor.x, 60)
+        self.assertTrue(screen.rendered().endswith("\ue0b2 makz-mac "))
+
+    def test_draw_tab_truncates_title_exceeding_max_title_length(self) -> None:
+        """Titles longer than max_title_length are rewound and capped with an ellipsis."""
+        screen = FakeScreen(100)
+        tab = MagicMock(
+            is_active=False,
+            title="makz@chrysoprase | 0: jetski:CS-case-triage - cli",
+        )
+        extra_data = MagicMock(for_layout=False)
+
+        end = tab_bar.draw_tab(
+            self.draw_data,
+            screen,
+            tab,
+            before=0,
+            max_title_length=20,
+            index=2,
+            is_last=False,
+            extra_data=extra_data,
+        )
+
+        self.assertEqual(end, 20)
+        self.assertIn("…", screen.rendered()[:20])
+
+
 if __name__ == "__main__":
     unittest.main()
