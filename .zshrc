@@ -116,21 +116,204 @@ function zle-line-init {
 }
 zle -N zle-line-init
 
-# Set tmux pane title to current directory when idle
-precmd() {
-  if [[ -n "$TMUX" ]]; then
-    # ${PWD##*/} gets just the current directory name
-    tmux select-pane -T "${PWD##*/}" 
+# Helper to extract git repository name or fallback directory name (pure zsh, zero forks)
+_get_repo_or_dir_name() {
+  local dir="$PWD"
+  while [[ -n "$dir" && "$dir" != "/" ]]; do
+    if [[ -e "$dir/.git" ]]; then
+      echo "${dir##*/}"
+      return
+    fi
+    dir="${dir%/*}"
+  done
+  echo "${PWD##*/}"
+}
+
+# Helper to set per-pane title anchored to current pane
+_set_tmux_title() {
+  if [[ -n "$TMUX" && -n "$TMUX_PANE" ]]; then
+    tmux select-pane -t "$TMUX_PANE" -T "$1" >/dev/null 2>&1
   fi
 }
 
-# Reset cursor to beam before executing a command
-# And set tmux pane title to the command
+# Helper to shorten paths for tmux window names
+# e.g., //foo/bar/baz/qux:thing -> //foo...baz/qux:thing
+#       /foo/bar/baz/qux.py -> /foo...baz/qux.py
+_shorten_path() {
+  local raw_path="$1"
+  local prefix=""
+
+  if [[ "$raw_path" == //* ]]; then
+    prefix="//"
+  elif [[ "$raw_path" == /* ]]; then
+    prefix="/"
+  elif [[ "$raw_path" == ./* ]]; then
+    prefix="./"
+  fi
+
+  local clean="${raw_path#${prefix}}"
+  local path="${clean%%:*}"
+  local thing="${clean##*:}"
+  if [[ "$path" == "$thing" ]]; then
+    thing=""
+  fi
+
+  local parts=(${(s:/:)path})
+  local num_parts=${#parts}
+  if [[ $num_parts -le 2 ]]; then
+    echo "$raw_path"
+    return
+  fi
+
+  local first="${parts[1]}"
+  local last="${parts[-1]}"
+  local middle_parts=(${parts[2,-2]})
+  local middle="${(j:/:)middle_parts}"
+
+  local ab=""
+  if [[ ${#middle} -gt 3 ]]; then
+    ab="${middle[-3,-1]}"
+  else
+    ab="$middle"
+  fi
+
+  if [[ -n "$thing" ]]; then
+    echo "${prefix}${first}...${ab}/${last}:${thing}"
+  else
+    echo "${prefix}${first}...${ab}/${last}"
+  fi
+}
+
+# Set tmux pane title to git repo name (or current directory) when idle
+precmd() {
+  if [[ -n "$TMUX" && -n "$TMUX_PANE" ]]; then
+    [[ -n "$TMUX_TITLE_LOCKED" ]] && return
+    local custom_tag
+    custom_tag=$(tmux display-message -p -t "$TMUX_PANE" '#{@workspace_tag}' 2>/dev/null || true)
+    if [[ -z "$custom_tag" ]]; then
+      _set_tmux_title "$(_get_repo_or_dir_name)"
+    fi
+  fi
+}
+
+# Reset cursor to beam before executing a command and format tmux pane title
 preexec() {
   echo -ne '\e[5 q'
-  if [[ -n "$TMUX" ]]; then
-    # $1 contains the exact command typed, e.g., "vim ~/.zshrc"
-    tmux select-pane -T "$1" 
+  if [[ -n "$TMUX" && -n "$TMUX_PANE" ]]; then
+    [[ -n "$TMUX_TITLE_LOCKED" ]] && return
+    local custom_tag
+    custom_tag=$(tmux display-message -p -t "$TMUX_PANE" '#{@workspace_tag}' 2>/dev/null || true)
+    if [[ -n "$custom_tag" ]]; then
+      return
+    fi
+
+    local cmd="$1"
+    local words=(${(z)cmd})
+    local binary="${words[1]}"
+
+    if [[ "$binary" == "agy" || "$binary" == "antigravity" || "$binary" == */agy || "$binary" == */antigravity ]]; then
+      local loc="$(_get_repo_or_dir_name)"
+      _set_tmux_title "agy:${loc}"
+      tmux set-window-option -t "$TMUX_PANE" automatic-rename on >/dev/null 2>&1
+
+    elif [[ "$binary" == "git" || "$binary" == "gh" ]]; then
+      local subcmd=""
+      local target=""
+      for arg in ${words[2,-1]}; do
+        if [[ "$arg" != -* ]]; then
+          if [[ -z "$subcmd" ]]; then
+            subcmd="$arg"
+          else
+            target="$arg"
+            break
+          fi
+        fi
+      done
+      if [[ -n "$subcmd" && -n "$target" ]]; then
+        _set_tmux_title "${binary}:${subcmd}:$(_shorten_path "$target")"
+      elif [[ -n "$subcmd" ]]; then
+        _set_tmux_title "${binary}:${subcmd}"
+      else
+        _set_tmux_title "${binary}"
+      fi
+
+    elif [[ "$binary" == "bazel" ]]; then
+      local subcmd="${words[2]}"
+      local target=""
+      for arg in ${words[3,-1]}; do
+        if [[ "$arg" != -* ]]; then
+          target="$arg"
+          break
+        fi
+      done
+      if [[ -n "$target" ]]; then
+        _set_tmux_title "bzl:${subcmd}:$(_shorten_path "$target")"
+      else
+        _set_tmux_title "bzl:${subcmd}"
+      fi
+
+    elif [[ "$binary" == "python3" || "$binary" == "python" || "$binary" == "py3" || "$binary" == "py" ]]; then
+      local bin_short="py"
+      [[ "$binary" == *3 ]] && bin_short="py3"
+      local script=""
+      for arg in ${words[2,-1]}; do
+        if [[ "$arg" != -* ]]; then
+          script="$arg"
+          break
+        fi
+      done
+      if [[ -n "$script" ]]; then
+        _set_tmux_title "${bin_short}:$(_shorten_path "$script")"
+      else
+        _set_tmux_title "${bin_short}"
+      fi
+
+    elif [[ "$binary" == "sh" || "$binary" == "bash" || "$binary" == "zsh" ]]; then
+      local script=""
+      for arg in ${words[2,-1]}; do
+        if [[ "$arg" != -* ]]; then
+          script="$arg"
+          break
+        fi
+      done
+      if [[ -n "$script" ]]; then
+        _set_tmux_title "${binary}:$(_shorten_path "$script")"
+      else
+        _set_tmux_title "${binary}"
+      fi
+
+    elif [[ "$binary" == ./* || "$binary" == /* ]]; then
+      _set_tmux_title "$(_shorten_path "$binary")"
+
+    elif [[ "$binary" == "gcloud" ]]; then
+      local parts=()
+      local project=""
+      for (( i=2; i<=${#words}; i++ )); do
+        local arg="${words[i]}"
+        if [[ "$arg" == --project=* ]]; then
+          project="${arg#--project=}"
+        elif [[ "$arg" == --project ]]; then
+          project="${words[i+1]}"
+          ((i++))
+        elif [[ "$arg" == -* ]]; then
+          continue
+        else
+          case "$arg" in
+            resource-manager) parts+=("rm") ;;
+            container) parts+=("gke") ;;
+            compute) parts+=("gce") ;;
+            *) parts+=("$arg") ;;
+          esac
+        fi
+      done
+      local name="gcloud"
+      [[ ${#parts} -gt 0 ]] && name="gcloud:${(j.:.)parts}"
+      [[ -n "$project" ]] && name="${name}[${project}]"
+      _set_tmux_title "$name"
+
+    else
+      _set_tmux_title "${cmd:0:20}"
+    fi
   fi
 }
 
