@@ -153,24 +153,22 @@ get_active_account_id() {
     echo ""
 }
 
-# Probe Cloudflare API token status via /user/tokens/verify
+# Probe Cloudflare API token status via /user/tokens/verify or /accounts/{id}/tokens/verify
 probe_cloudflare_token() {
     local token="$1"
+    local account_id="${2:-}"
     token="$(echo "$token" | tr -d '\r\n"' | xargs || true)"
+    account_id="$(echo "$account_id" | tr -d '\r\n"' | xargs || true)"
     if [[ -z "$token" ]]; then
         echo "NO_TOKEN"
         return
     fi
 
+    # 1. Try User-scoped API Token verify endpoint
     local response
     response="$(curl -sS --max-time 10 -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" 2>&1 || true)"
-
-    if [[ -z "$response" ]]; then
-        echo "NETWORK_ERROR"
-        return
-    fi
 
     local is_success
     is_success="$(echo "$response" | python3 -c "
@@ -179,7 +177,7 @@ try:
     data = json.load(sys.stdin)
     if data.get('success') is True:
         status = data.get('result', {}).get('status', 'active')
-        print(f'OK|{status}')
+        print(f'OK|User Token ({status})')
     else:
         errs = data.get('errors', [])
         msg = errs[0].get('message', 'invalid') if errs else 'verification_failed'
@@ -191,6 +189,44 @@ try:
 except Exception:
     print('ERROR|parse_error')
 " 2>/dev/null || echo "ERROR|parse_error")"
+
+    if [[ "$is_success" == OK* ]]; then
+        echo "$is_success"
+        return
+    fi
+
+    # 2. If user-scoped verify failed and account_id is present, probe Account-scoped verify endpoint
+    if [[ -n "$account_id" ]]; then
+        local acc_response
+        acc_response="$(curl -sS --max-time 10 -X GET "https://api.cloudflare.com/client/v4/accounts/${account_id}/tokens/verify" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" 2>&1 || true)"
+
+        local acc_success
+        acc_success="$(echo "$acc_response" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if data.get('success') is True:
+        status = data.get('result', {}).get('status', 'active')
+        print(f'OK|Account Token ({status})')
+    else:
+        errs = data.get('errors', [])
+        msg = errs[0].get('message', 'invalid') if errs else 'verification_failed'
+        for err in errs:
+            chain = err.get('error_chain', [])
+            if chain:
+                msg = f'{msg}: {chain[0].get(\"message\", \"\")}'
+        print(f'ERROR|{msg}')
+except Exception:
+    print('ERROR|parse_error')
+" 2>/dev/null || echo "ERROR|parse_error")"
+
+        if [[ "$acc_success" == OK* ]]; then
+            echo "$acc_success"
+            return
+        fi
+    fi
 
     echo "$is_success"
 }
@@ -238,7 +274,7 @@ audit_cloudflare() {
     local first_acc_name=""
 
     if [[ -n "$token" ]]; then
-        auth_result="$(probe_cloudflare_token "$token")"
+        auth_result="$(probe_cloudflare_token "$token" "$account_id")"
         if [[ "$auth_result" == OK* ]]; then
             token_status="${GREEN}Valid & Active${RESET}"
             # Try to fetch accounts
@@ -354,7 +390,18 @@ apply_cloudflare() {
 
     log_info "Verifying API Token with Cloudflare..."
     local auth_result
-    auth_result="$(probe_cloudflare_token "$token")"
+    auth_result="$(probe_cloudflare_token "$token" "$account_id")"
+    if [[ "$auth_result" != OK* && -z "$account_id" ]]; then
+        echo ""
+        log_info "User-scoped verification failed. If this is an Account API Token, please provide your Account ID."
+        read -r -p "Cloudflare Account ID (or press Enter to skip): " account_id || account_id=""
+        account_id="$(echo "$account_id" | tr -d '\r\n"' | xargs || true)"
+        if [[ -n "$account_id" ]]; then
+            log_info "Retrying verification with Account API endpoint..."
+            auth_result="$(probe_cloudflare_token "$token" "$account_id")"
+        fi
+    fi
+
     local verified=false
 
     if [[ "$auth_result" == OK* ]]; then
