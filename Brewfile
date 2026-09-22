@@ -100,8 +100,6 @@ cask "focusrite-control"
 cask "font-hack-nerd-font"
 # Set of tools to manage resources and applications hosted on Google Cloud
 cask "gcloud-cli"
-# Utility to hide menu bar items
-cask "hiddenbar"
 # GPU-based terminal emulator
 cask "kitty"
 # Cable-free audio router
