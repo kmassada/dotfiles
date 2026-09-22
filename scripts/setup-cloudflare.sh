@@ -11,18 +11,18 @@
 set -euo pipefail
 
 # ANSI styling
-BOLD="\033[1m"
-GREEN="\033[32m"
-YELLOW="\033[33m"
-RED="\033[31m"
-BLUE="\033[34m"
-CYAN="\033[36m"
-RESET="\033[0m"
+BOLD=$'\033[1m'
+GREEN=$'\033[32m'
+YELLOW=$'\033[33m'
+RED=$'\033[31m'
+BLUE=$'\033[34m'
+CYAN=$'\033[36m'
+RESET=$'\033[0m'
 
-log_info()    { echo -e "${BLUE}ℹ️  ${BOLD}$*${RESET}"; }
-log_success() { echo -e "${GREEN}✓ ${BOLD}$*${RESET}"; }
-log_warn()    { echo -e "${YELLOW}⚠️  ${BOLD}$*${RESET}"; }
-log_error()   { echo -e "${RED}❌ ${BOLD}$*${RESET}" >&2; }
+log_info()    { echo "${BLUE}ℹ️  ${BOLD}$*${RESET}"; }
+log_success() { echo "${GREEN}✓ ${BOLD}$*${RESET}"; }
+log_warn()    { echo "${YELLOW}⚠️  ${BOLD}$*${RESET}"; }
+log_error()   { echo "${RED}❌ ${BOLD}$*${RESET}" >&2; }
 
 APPLY=false
 CLI_TOKEN=""
@@ -316,15 +316,14 @@ apply_cloudflare() {
     account_id="$(get_active_account_id)"
 
     if [[ -z "$token" ]]; then
-        echo -e "${BOLD}Step 1: Obtain a Cloudflare API Token${RESET}"
+        echo "${BOLD}Step 1: Obtain a Cloudflare API Token${RESET}"
         echo "  1. Open: https://dash.cloudflare.com/profile/api-tokens"
         echo "  2. Click ${BOLD}'Create Token'${RESET}"
         echo "  3. Use the ${BOLD}'Edit Cloudflare Workers'${RESET} template or create custom permissions"
         echo "     (Account: Account Settings Read, Workers Scripts Edit, D1/KV Edit)"
         echo "  4. Copy the generated token"
         echo ""
-        echo -n "Paste your Cloudflare API Token: "
-        read -r -s token
+        read -r -s -p "Paste your Cloudflare API Token: " token
         echo ""
         if [[ -z "$token" ]]; then
             log_error "Token cannot be empty."
@@ -351,8 +350,7 @@ apply_cloudflare() {
     fi
 
     if [[ -z "$account_id" ]]; then
-        echo -n "Enter your Cloudflare Account ID: "
-        read -r account_id
+        read -r -p "Enter your Cloudflare Account ID: " account_id
     fi
 
     echo ""
