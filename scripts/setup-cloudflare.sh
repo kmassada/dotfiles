@@ -150,15 +150,16 @@ get_active_account_id() {
 # Probe Cloudflare API token status via /user/tokens/verify
 probe_cloudflare_token() {
     local token="$1"
+    token="$(echo "$token" | tr -d '\r\n"' | xargs || true)"
     if [[ -z "$token" ]]; then
         echo "NO_TOKEN"
         return
     fi
 
     local response
-    response="$(curl -sS --max-time 5 -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+    response="$(curl -sS --max-time 10 -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
         -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" 2>/dev/null || true)"
+        -H "Content-Type: application/json" 2>&1 || true)"
 
     if [[ -z "$response" ]]; then
         echo "NETWORK_ERROR"
@@ -166,18 +167,22 @@ probe_cloudflare_token() {
     fi
 
     local is_success
-    is_success="$(python3 -c "
+    is_success="$(echo "$response" | python3 -c "
 import sys, json
 try:
-    data = json.loads('''$response''')
+    data = json.load(sys.stdin)
     if data.get('success') is True:
         status = data.get('result', {}).get('status', 'active')
         print(f'OK|{status}')
     else:
         errs = data.get('errors', [])
         msg = errs[0].get('message', 'invalid') if errs else 'verification_failed'
+        for err in errs:
+            chain = err.get('error_chain', [])
+            if chain:
+                msg = f'{msg}: {chain[0].get(\"message\", \"\")}'
         print(f'ERROR|{msg}')
-except Exception as e:
+except Exception:
     print('ERROR|parse_error')
 " 2>/dev/null || echo "ERROR|parse_error")"
 
@@ -187,19 +192,20 @@ except Exception as e:
 # Fetch accounts associated with the token
 fetch_cloudflare_accounts() {
     local token="$1"
+    token="$(echo "$token" | tr -d '\r\n"' | xargs || true)"
     if [[ -z "$token" ]]; then
         return
     fi
 
     local response
-    response="$(curl -sS --max-time 5 -X GET "https://api.cloudflare.com/client/v4/accounts" \
+    response="$(curl -sS --max-time 10 -X GET "https://api.cloudflare.com/client/v4/accounts" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" 2>/dev/null || true)"
 
-    python3 -c "
+    echo "$response" | python3 -c "
 import sys, json
 try:
-    data = json.loads('''$response''')
+    data = json.load(sys.stdin)
     if data.get('success') is True:
         for acc in data.get('result', []):
             name = acc.get('name', 'Unnamed')
@@ -325,10 +331,19 @@ apply_cloudflare() {
         echo ""
         read -r -s -p "Paste your Cloudflare API Token: " token
         echo ""
+        token="$(echo "$token" | tr -d '\r\n"' | xargs || true)"
         if [[ -z "$token" ]]; then
             log_error "Token cannot be empty."
             exit 1
         fi
+    fi
+
+    token="$(echo "$token" | tr -d '\r\n"' | xargs || true)"
+
+    if [[ "$token" =~ ^[a-fA-F0-9]{37}$ ]]; then
+        log_warn "Notice: This looks like a Global API Key (37 hex characters)."
+        log_warn "Global API Keys cannot use Bearer token authentication."
+        log_warn "Please create an API Token at: https://dash.cloudflare.com/profile/api-tokens"
     fi
 
     log_info "Verifying API Token with Cloudflare..."
