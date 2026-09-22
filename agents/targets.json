@@ -26,11 +26,21 @@
           "source": "rules_dir"
         }
       ],
-      "settings": {
-        "target_file": "~/.gemini/antigravity-cli/settings.json",
-        "key": "modelProvider",
-        "value": "gemini"
-      }
+      "settings": [
+        {
+          "target_file": "~/.gemini/antigravity-cli/settings.json",
+          "key": "modelProvider",
+          "value": "gemini"
+        },
+        {
+          "target_file": "~/.gemini/antigravity-cli/settings.json",
+          "key": "statusLine",
+          "value": {
+            "command": "~/.gemini/antigravity-cli/statusline.sh",
+            "enabled": true
+          }
+        }
+      ]
     },
     "claude": {
       "name": "Claude Code",

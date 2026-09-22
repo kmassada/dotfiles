@@ -368,6 +368,128 @@ class TestDeclarativeConfigEngine(unittest.TestCase):
             config.main()
         self.assertEqual(cm.exception.code, 0)
 
+    def test_expand_setting_val(self) -> None:
+        """Verify recursive tilde expansion in setting values."""
+        home = str(Path.home())
+        # Primitive string
+        self.assertEqual(
+            config.expand_setting_val("~/.gemini/statusline.sh"),
+            f"{home}/.gemini/statusline.sh",
+        )
+        self.assertEqual(config.expand_setting_val("constant"), "constant")
+        self.assertEqual(config.expand_setting_val(42), 42)
+
+        # Mapping and Sequence
+        nested = {
+            "command": "~/bin/tool",
+            "enabled": True,
+            "paths": ["~/.local/bin", "/usr/local/bin"],
+        }
+        expected = {
+            "command": f"{home}/bin/tool",
+            "enabled": True,
+            "paths": [f"{home}/.local/bin", "/usr/local/bin"],
+        }
+        self.assertEqual(config.expand_setting_val(nested), expected)
+
+    def test_statusline_cli_actions(self) -> None:
+        """Verify check-statusline and apply-statusline legacy CLI dispatch."""
+        settings_file = self.test_root / "settings.json"
+        cmd_script = self.test_root / "statusline.sh"
+
+        cli_base = [
+            "config.py",
+            "--agy-settings",
+            str(settings_file),
+            "--statusline-cmd",
+            str(cmd_script),
+        ]
+
+        # Audit before apply should fail
+        with (
+            mock.patch("sys.argv", [*cli_base, "check-statusline"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO),
+            self.assertRaises(SystemExit) as cm,
+        ):
+            config.main()
+        self.assertEqual(cm.exception.code, 1)
+
+        # Apply statusline
+        with (
+            mock.patch("sys.argv", [*cli_base, "apply-statusline"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+            self.assertRaises(SystemExit) as cm,
+        ):
+            config.main()
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("UPDATED", out.getvalue())
+
+        # Second apply should report ALREADY_SET
+        with (
+            mock.patch("sys.argv", [*cli_base, "apply-statusline"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+            self.assertRaises(SystemExit) as cm,
+        ):
+            config.main()
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("ALREADY_SET", out.getvalue())
+
+        # Check statusline should now succeed
+        with (
+            mock.patch("sys.argv", [*cli_base, "check-statusline"]),
+            mock.patch("sys.stdout", new_callable=io.StringIO) as out,
+            self.assertRaises(SystemExit) as cm,
+        ):
+            config.main()
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("CONFIGURED", out.getvalue())
+
+    def test_apply_and_audit_multi_settings(self) -> None:
+        """Verify target with a list of settings dictionaries is reconciled."""
+        settings_file = self.test_root / "settings.json"
+        target_cfg = {
+            "settings": [
+                {
+                    "target_file": str(settings_file),
+                    "key": "modelProvider",
+                    "value": "gemini",
+                },
+                {
+                    "target_file": str(settings_file),
+                    "key": "statusLine",
+                    "value": {
+                        "command": "~/statusline.sh",
+                        "enabled": True,
+                    },
+                },
+            ]
+        }
+        sources: dict[str, Path] = {}
+
+        # Audit before apply
+        audit_res = config.audit_target("antigravity", target_cfg, sources)
+        self.assertFalse(audit_res["settings_modelProvider"]["ok"])
+        self.assertFalse(audit_res["settings_statusLine"]["ok"])
+
+        # Apply
+        apply_res = config.apply_target("antigravity", target_cfg, sources)
+        self.assertTrue(apply_res["settings_modelProvider"])
+        self.assertTrue(apply_res["settings_statusLine"])
+
+        # Re-audit
+        audit_res_after = config.audit_target("antigravity", target_cfg, sources)
+        self.assertTrue(audit_res_after["settings_modelProvider"]["ok"])
+        self.assertTrue(audit_res_after["settings_statusLine"]["ok"])
+
+        # Check disk values
+        saved = config.load_json(settings_file)
+        self.assertEqual(saved["modelProvider"], "gemini")
+        home = str(Path.home())
+        self.assertEqual(
+            saved["statusLine"],
+            {"command": f"{home}/statusline.sh", "enabled": True},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

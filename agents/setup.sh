@@ -314,9 +314,9 @@ if target_enabled "antigravity"; then
     fi
 
     # --------------------------------------------------------------------------
-    # 7. Antigravity Model Provider (~/.gemini/antigravity-cli/settings.json)
+    # 7. Antigravity CLI Settings (~/.gemini/antigravity-cli/settings.json)
     # --------------------------------------------------------------------------
-    log_info "7. Checking Antigravity model provider (~/.gemini/antigravity-cli/settings.json)..."
+    log_info "7. Checking Antigravity CLI settings (~/.gemini/antigravity-cli/settings.json)..."
 
     if [ "$APPLY" = true ]; then
         AGY_RES=$(python3 "$PY_ENGINE" apply-provider)
@@ -325,12 +325,29 @@ if target_enabled "antigravity"; then
         else
             log_success "antigravity-cli/settings.json already has modelProvider = 'gemini'"
         fi
+
+        if [ -f "$SCRIPT_DIR/../scripts/agy-statusline.sh" ]; then
+            STATUSLINE_RES=$(python3 "$PY_ENGINE" apply-statusline)
+            if [ "$STATUSLINE_RES" = "UPDATED" ]; then
+                log_success "Configured statusLine in ~/.gemini/antigravity-cli/settings.json"
+            else
+                log_success "antigravity-cli/settings.json already has custom statusLine configured"
+            fi
+        fi
     else
         if python3 "$PY_ENGINE" check-provider &>/dev/null; then
             log_success "antigravity-cli/settings.json is configured with modelProvider = 'gemini'"
         else
             CURRENT_PROV=$(python3 "$PY_ENGINE" get-provider)
             log_warn "antigravity-cli/settings.json modelProvider is: ${CURRENT_PROV:-none} (Run with --apply to set)"
+        fi
+
+        if [ -f "$SCRIPT_DIR/../scripts/agy-statusline.sh" ]; then
+            if python3 "$PY_ENGINE" check-statusline &>/dev/null; then
+                log_success "antigravity-cli/settings.json has custom statusLine configured"
+            else
+                log_warn "antigravity-cli/settings.json statusLine needs configuration (Run with --apply to set)"
+            fi
         fi
     fi
 fi

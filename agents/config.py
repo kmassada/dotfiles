@@ -368,6 +368,27 @@ def apply_skill_symlinks(target_skills_dir: Path, source_skills_dir: Path) -> bo
     return changed
 
 
+def expand_setting_val(val: Any) -> Any:
+    """Recursively expand home directory shortcuts in setting values.
+
+    Args:
+        val: Raw setting value (primitive, sequence, or mapping).
+
+    Returns:
+        Value with tilde paths expanded to absolute home paths.
+
+    """
+    if isinstance(val, str):
+        if val.startswith("~"):
+            return str(expand_path(val))
+        return val
+    if isinstance(val, Mapping):
+        return {k: expand_setting_val(v) for k, v in val.items()}
+    if isinstance(val, Sequence) and not isinstance(val, (str, bytes)):
+        return [expand_setting_val(v) for v in val]
+    return val
+
+
 def check_json_key(target_file: Path, key: str, expected_val: Any) -> tuple[bool, str]:
     """Check whether key in target_file matches expected_val.
 
@@ -383,7 +404,8 @@ def check_json_key(target_file: Path, key: str, expected_val: Any) -> tuple[bool
     if not target_file.is_file():
         return False, "MISSING_FILE"
     data = load_json(target_file)
-    if data.get(key) == expected_val:
+    expected_norm = expand_setting_val(expected_val)
+    if data.get(key) == expected_norm:
         return True, "CONFIGURED"
     return False, "MISMATCH"
 
@@ -401,8 +423,9 @@ def apply_json_key(target_file: Path, key: str, val: Any) -> bool:
 
     """
     data = load_json(target_file)
-    if data.get(key) != val:
-        data[key] = val
+    val_norm = expand_setting_val(val)
+    if data.get(key) != val_norm:
+        data[key] = val_norm
         save_json(target_file, data)
         return True
     return False
@@ -565,10 +588,24 @@ def audit_target(
                 "target": str(tgt_dir),
             }
 
-    # 5. Settings key (e.g. modelProvider: gemini)
+    # 5. Settings key(s) (e.g. modelProvider: gemini, statusLine)
     settings_cfg = target_cfg.get("settings")
-    if isinstance(settings_cfg, dict) and "target_file" in settings_cfg:
-        tgt_file = expand_path(settings_cfg["target_file"])
+    if isinstance(settings_cfg, Sequence) and not isinstance(
+        settings_cfg, (str, bytes)
+    ):
+        for entry in settings_cfg:
+            if isinstance(entry, Mapping) and "target_file" in entry:
+                tgt_file = expand_path(str(entry["target_file"]))
+                key = str(entry.get("key", ""))
+                val = entry.get("value")
+                ok, status = check_json_key(tgt_file, key, val)
+                results[f"settings_{key}"] = {
+                    "ok": ok,
+                    "status": status,
+                    "target": str(tgt_file),
+                }
+    elif isinstance(settings_cfg, Mapping) and "target_file" in settings_cfg:
+        tgt_file = expand_path(str(settings_cfg["target_file"]))
         key = str(settings_cfg.get("key", ""))
         val = settings_cfg.get("value")
         ok, status = check_json_key(tgt_file, key, val)
@@ -644,10 +681,19 @@ def apply_target(
         if src_dir:
             results["skills_symlinks"] = apply_skill_symlinks(tgt_dir, src_dir)
 
-    # 5. Settings key
+    # 5. Settings key(s)
     settings_cfg = target_cfg.get("settings")
-    if isinstance(settings_cfg, dict) and "target_file" in settings_cfg:
-        tgt_file = expand_path(settings_cfg["target_file"])
+    if isinstance(settings_cfg, Sequence) and not isinstance(
+        settings_cfg, (str, bytes)
+    ):
+        for entry in settings_cfg:
+            if isinstance(entry, Mapping) and "target_file" in entry:
+                tgt_file = expand_path(str(entry["target_file"]))
+                key = str(entry.get("key", ""))
+                val = entry.get("value")
+                results[f"settings_{key}"] = apply_json_key(tgt_file, key, val)
+    elif isinstance(settings_cfg, Mapping) and "target_file" in settings_cfg:
+        tgt_file = expand_path(str(settings_cfg["target_file"]))
         key = str(settings_cfg.get("key", ""))
         val = settings_cfg.get("value")
         results["settings"] = apply_json_key(tgt_file, key, val)
@@ -707,6 +753,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--claude-skills-dir", default="~/.claude/skills")
     parser.add_argument("--claude-mcp-json", default="~/.claude.json")
     parser.add_argument("--model-provider", default="gemini")
+    parser.add_argument(
+        "--statusline-cmd", default="~/.gemini/antigravity-cli/statusline.sh"
+    )
 
     parser.add_argument(
         "action",
@@ -725,6 +774,8 @@ def build_parser() -> argparse.ArgumentParser:
             "check-provider",
             "apply-provider",
             "get-provider",
+            "check-statusline",
+            "apply-statusline",
             "check-claude-skills",
             "apply-claude-skills",
             "check-claude-mcp",
@@ -803,6 +854,22 @@ def main(argv: Sequence[str] | None = None) -> None:
     elif action == "get-provider":
         data = load_json(expand_path(args.agy_settings))
         print(data.get("modelProvider", "none"))
+        sys.exit(0)
+
+    elif action == "check-statusline":
+        statusline_cmd = str(expand_path(args.statusline_cmd))
+        expected_val = {"command": statusline_cmd, "enabled": True}
+        ok, status = check_json_key(
+            expand_path(args.agy_settings), "statusLine", expected_val
+        )
+        print(status)
+        sys.exit(0 if ok else 1)
+
+    elif action == "apply-statusline":
+        statusline_cmd = str(expand_path(args.statusline_cmd))
+        val = {"command": statusline_cmd, "enabled": True}
+        updated = apply_json_key(expand_path(args.agy_settings), "statusLine", val)
+        print("UPDATED" if updated else "ALREADY_SET")
         sys.exit(0)
 
     elif action == "check-claude-skills":
