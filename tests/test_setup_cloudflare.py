@@ -61,9 +61,18 @@ class TestSetupCloudflare(unittest.TestCase):
             timeout=10,
         )
         self.assertNotEqual(res.returncode, 0)
-        self.assertIn(
-            "Failed to authenticate token with Cloudflare", res.stderr + res.stdout
+        self.assertIn("Live Cloudflare verification returned", res.stdout)
+        self.assertIn("Aborted without saving token", res.stderr + res.stdout)
+
+    def test_force_flag_present(self) -> None:
+        """Verify that --force flag is accepted in help and usage."""
+        res = subprocess.run(
+            [str(SCRIPT_PATH), "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
+        self.assertIn("--force", res.stdout)
 
 
 if __name__ == "__main__":

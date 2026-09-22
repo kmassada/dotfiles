@@ -27,6 +27,7 @@ log_error()   { echo "${RED}❌ ${BOLD}$*${RESET}" >&2; }
 APPLY=false
 CLI_TOKEN=""
 CLI_ACCOUNT_ID=""
+FORCE=false
 MCP_CONFIG="$HOME/.gemini/config/mcp_config.json"
 
 usage() {
@@ -37,6 +38,7 @@ ${BOLD}Options:${RESET}
   --apply                Run interactive guided onboarding and save credentials
   --token <TOKEN>        Provide Cloudflare API token directly
   --account-id <ID>      Provide Cloudflare Account ID directly
+  -f, --force            Save token even if live Cloudflare API verification fails
   -h, --help             Show this help message
 
 ${BOLD}Examples:${RESET}
@@ -52,6 +54,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --apply)
             APPLY=true
+            shift
+            ;;
+        -f|--force)
+            FORCE=true
             shift
             ;;
         --token)
@@ -349,28 +355,48 @@ apply_cloudflare() {
     log_info "Verifying API Token with Cloudflare..."
     local auth_result
     auth_result="$(probe_cloudflare_token "$token")"
-    if [[ "$auth_result" != OK* ]]; then
-        log_error "Failed to authenticate token with Cloudflare: $auth_result"
-        exit 1
+    local verified=false
+
+    if [[ "$auth_result" == OK* ]]; then
+        verified=true
+    else
+        log_warn "Live Cloudflare verification returned: $auth_result"
+        if [ "$FORCE" = true ]; then
+            log_warn "Proceeding due to --force flag."
+        else
+            echo ""
+            read -r -p "Do you want to save this token to the vault anyway? [y/N]: " confirm_save || confirm_save="n"
+            if [[ ! "$confirm_save" =~ ^[Yy]$ ]]; then
+                log_error "Aborted without saving token."
+                exit 1
+            fi
+            log_warn "Saving unverified token per user confirmation."
+        fi
     fi
 
-    # Discover Account ID if not set
-    local accounts_list
-    accounts_list="$(fetch_cloudflare_accounts "$token")"
-    if [[ -z "$account_id" && -n "$accounts_list" ]]; then
-        account_id="$(echo "$accounts_list" | head -n 1 | cut -d'|' -f1)"
-        local acc_name
-        acc_name="$(echo "$accounts_list" | head -n 1 | cut -d'|' -f2)"
-        log_success "Auto-discovered Cloudflare Account: ${BOLD}$acc_name ($account_id)${RESET}"
+    # Discover Account ID if token is verified and ID not set
+    if [ "$verified" = true ]; then
+        local accounts_list
+        accounts_list="$(fetch_cloudflare_accounts "$token")"
+        if [[ -z "$account_id" && -n "$accounts_list" ]]; then
+            account_id="$(echo "$accounts_list" | head -n 1 | cut -d'|' -f1)"
+            local acc_name
+            acc_name="$(echo "$accounts_list" | head -n 1 | cut -d'|' -f2)"
+            log_success "Auto-discovered Cloudflare Account: ${BOLD}$acc_name ($account_id)${RESET}"
+        fi
     fi
 
     if [[ -z "$account_id" ]]; then
-        read -r -p "Enter your Cloudflare Account ID: " account_id
+        read -r -p "Enter your Cloudflare Account ID (optional, press Enter to skip): " account_id || account_id=""
     fi
 
     echo ""
-    log_success "Authenticated successfully with Cloudflare!"
-    echo "  • Token:       Verified (active)"
+    if [ "$verified" = true ]; then
+        log_success "Authenticated successfully with Cloudflare!"
+        echo "  • Token:       Verified (active)"
+    else
+        log_warn "Cloudflare API Token: Unverified (saved)"
+    fi
     if [[ -n "$account_id" ]]; then
         echo "  • Account ID:  ${BOLD}$account_id${RESET}"
     fi
