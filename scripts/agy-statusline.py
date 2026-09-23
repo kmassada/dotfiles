@@ -366,7 +366,7 @@ def format_context(ctx: dict[str, Any]) -> tuple[str | None, float]:
     if used_tokens > 0:
         tokens_display = f" ({format_tokens(used_tokens)}/{format_tokens(max_tokens)})"
     else:
-        tokens_display = f" (0/{format_tokens(max_tokens)})"
+        tokens_display = ""
 
     if pct_val >= 30.0:
         ctx_color = RED
