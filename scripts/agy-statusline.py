@@ -110,7 +110,7 @@ def resolve_state_and_agent(data: dict[str, Any]) -> tuple[str, str | None]:
         "onboarding",
         "workspace_trust",
     ):
-        agent_badge = f"{DIM}⏳ {label}{RESET}"
+        agent_badge = f"{DIM}󱎫 {label}{RESET}"
     elif agent_state in ("error", "settings_error"):
         agent_badge = f"{RED}✖ {label}{RESET}"
     else:
@@ -132,7 +132,7 @@ def resolve_state_and_agent(data: dict[str, Any]) -> tuple[str, str | None]:
             if len(running_subagents) > 1
             else ""
         )
-        subagent_badge = f"{MAGENTA}⚡ {first_sub}{extra}{RESET}"
+        subagent_badge = f"{MAGENTA}󱐋 {first_sub}{extra}{RESET}"
 
     return agent_badge, subagent_badge
 
@@ -234,7 +234,7 @@ def resolve_workspace(
     except (subprocess.SubprocessError, FileNotFoundError, OSError):
         pass
 
-    # Tier 2: Non-Git VCS (e.g. jj, hg client name reported by CLI)
+    # Tier 2: Non-Git VCS
     if vcs.get("client"):
         client_name = str(vcs["client"])
         # Clean common user prefix e.g. makz_setup -> setup if underscore present
@@ -326,7 +326,7 @@ def format_context(ctx: dict[str, Any]) -> tuple[str | None, float]:
         or ctx.get("max_tokens")
         or ctx.get("limit")
         or ctx.get("window_size")
-        or 1_048_576
+        or 1_048_576  # Default 1M
     )
 
     current_usage = ctx.get("current_usage") or {}
@@ -343,6 +343,7 @@ def format_context(ctx: dict[str, Any]) -> tuple[str | None, float]:
         if "total_input_tokens" in ctx
         else 0
     )
+    # Used tokens resolution across active session vs turn usage
     used_tokens = (
         ctx.get("total_tokens")
         or ctx.get("used_tokens")
@@ -424,14 +425,37 @@ def generate_statusline(data: dict[str, Any]) -> str:
     quota_badge = format_quota(data, model_id)
 
     # 6. Tasks & Artifacts Badges
-    task_count = int(data.get("task_count", 0) or 0)
+    task_count = 0
+    tasks_raw = (
+        data.get("task_count")
+        or data.get("tasks")
+        or data.get("background_tasks")
+    )
+    if isinstance(tasks_raw, list):
+        running_tasks = [
+            t
+            for t in tasks_raw
+            if isinstance(t, dict) and t.get("status") in ("running", "active")
+        ]
+        task_count = len(running_tasks) if running_tasks else len(tasks_raw)
+    elif tasks_raw is not None:
+        try:
+            task_count = int(tasks_raw)
+        except (ValueError, TypeError):
+            task_count = 0
+
     tasks_badge = f"{YELLOW}⚙ {task_count}{RESET}" if task_count > 0 else None
 
-    artifacts = data.get("artifacts")
-    if isinstance(artifacts, list):
-        artifact_count = len(artifacts)
-    else:
-        artifact_count = int(data.get("artifact_count") or 0)
+    artifact_count = 0
+    artifacts_raw = data.get("artifact_count") or data.get("artifacts")
+    if isinstance(artifacts_raw, list):
+        artifact_count = len(artifacts_raw)
+    elif artifacts_raw is not None:
+        try:
+            artifact_count = int(artifacts_raw)
+        except (ValueError, TypeError):
+            artifact_count = 0
+
     artifacts_badge = f"{BLUE}󰈙 {artifact_count}{RESET}" if artifact_count > 0 else None
 
     # Assemble segments in display priority order
