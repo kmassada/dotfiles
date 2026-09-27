@@ -194,7 +194,8 @@ if ! is_host_in_config "$CONFIG_ENTRY_HOST" "$KEY_PATH_BASE/config"; then
         echo "    AddKeysToAgent yes"
         if [[ -n "${FIDO_PROVIDER:-}" ]]; then
             echo "    SecurityKeyProvider $FIDO_PROVIDER"
-        elif [[ "$(uname -s)" == "Darwin" ]]; then
+        elif [[ -z "$KEY_SUFFIX" && "$(uname -s)" == "Darwin" ]]; then
+            echo "    IgnoreUnknown UseKeychain"
             echo "    UseKeychain yes"
         fi
     } >> "$KEY_PATH_BASE/config"
