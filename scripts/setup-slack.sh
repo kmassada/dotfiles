@@ -102,12 +102,14 @@ get_active_token() {
             echo "$cred_val"
             return 0
         fi
+        echo ""
+        return 0
     fi
 
     # 4. Password Store fallback (pass)
     if command -v pass &>/dev/null; then
         local pass_val
-        pass_val="$(pass show ai-agents/slack/bot_token 2>/dev/null | head -n 1 || true)"
+        pass_val="$(PASSWORD_STORE_GPG_OPTS="--batch --no-tty" pass show ai-agents/slack/bot_token 2>/dev/null | head -n 1 || true)"
         if [[ -n "$pass_val" ]]; then
             echo "$pass_val"
             return 0
@@ -188,7 +190,8 @@ audit_slack() {
     # Check Password Store (pass)
     local pass_status="${RED}Not Installed${RESET}"
     if command -v pass &>/dev/null; then
-        if pass ai-agents/slack/bot_token &>/dev/null; then
+        local pass_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+        if [[ -f "$pass_dir/ai-agents/slack/bot_token.gpg" ]]; then
             pass_status="${GREEN}Populated (ai-agents/slack)${RESET}"
         else
             pass_status="${YELLOW}Installed (ai-agents/slack not set)${RESET}"
