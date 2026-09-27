@@ -33,11 +33,11 @@ class TestSetupPassage(unittest.TestCase):
         # Mock age-plugin-se
         mock_se = self.mock_bin / "age-plugin-se"
         mock_se.write_text(
-            '#!/bin/sh\n'
+            "#!/bin/sh\n"
             'if [ "$1" = "keygen" ]; then\n'
             '  out="$3"\n'
             '  printf "# public key: age1se1mockpublickey12345\\nAGE-PLUGIN-SE-1MOCKHANDLE\\n" > "$out"\n'
-            'fi\n'
+            "fi\n"
         )
         mock_se.chmod(0o755)
 
@@ -76,7 +76,10 @@ class TestSetupPassage(unittest.TestCase):
         self.assertIn("Policy Invariants:", res.stdout)
         self.assertIn("Touch ID is enrolled by default on macOS", res.stdout)
         self.assertIn("FIDO2 is NEVER enrolled unless explicitly requested", res.stdout)
-        self.assertIn("Vault synchronization NEVER occurs unless a full Git repository URL is specified", res.stdout)
+        self.assertIn(
+            "Vault synchronization NEVER occurs unless a full Git repository URL is specified",
+            res.stdout,
+        )
 
     def test_status_flag_runs_cleanly(self) -> None:
         """Verify that --status reports key and vault state without error."""
@@ -101,7 +104,9 @@ class TestSetupPassage(unittest.TestCase):
             env=self.env,
             timeout=10,
         )
-        self.assertEqual(res.returncode, 0, f"Script failed: {res.stderr}\nStdout: {res.stdout}")
+        self.assertEqual(
+            res.returncode, 0, f"Script failed: {res.stderr}\nStdout: {res.stdout}"
+        )
 
         # Verify identities-se was created with 0600 permissions
         se_file = self.passage_home / "identities-se"
@@ -135,7 +140,9 @@ class TestSetupPassage(unittest.TestCase):
         )
         self.assertEqual(res.returncode, 0)
         se_file = self.passage_home / "identities-se"
-        self.assertFalse(se_file.exists(), "identities-se should not exist with --no-touch-id")
+        self.assertFalse(
+            se_file.exists(), "identities-se should not exist with --no-touch-id"
+        )
 
     def test_apply_does_not_sync_without_repo(self) -> None:
         """Verify that without --repo, local store is initialized with no remote."""

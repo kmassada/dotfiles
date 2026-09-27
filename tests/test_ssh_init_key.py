@@ -32,25 +32,32 @@ class TestSSHInitKey(unittest.TestCase):
         self.keygen_log = Path(self.tmp_dir) / "keygen.log"
         mock_keygen = self.mock_bin / "ssh-keygen"
         mock_keygen.write_text(
-            '#!/bin/sh\n'
+            "#!/bin/sh\n"
             f'echo "$@" >> "{self.keygen_log}"\n'
-            '# Find key path and write fake private & public key\n'
+            "# Find key path and write fake private & public key\n"
             'key=""\n'
-            'while [ $# -gt 0 ]; do\n'
+            "while [ $# -gt 0 ]; do\n"
             '  if [ "$1" = "-f" ]; then key="$2"; break; fi\n'
-            '  shift\n'
-            'done\n'
+            "  shift\n"
+            "done\n"
             'if [ -n "$key" ]; then\n'
             '  echo "-----BEGIN OPENSSH PRIVATE KEY-----" > "$key"\n'
             '  echo "mock-private-key" >> "$key"\n'
             '  echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA mock@host" > "${key}.pub"\n'
-            'fi\n'
+            "fi\n"
         )
         mock_keygen.chmod(0o755)
 
         # Mock ssh-add
         mock_ssh_add = self.mock_bin / "ssh-add"
-        mock_ssh_add.write_text('#!/bin/sh\nexit 0\n')
+        mock_ssh_add.write_text(
+            "#!/bin/sh\n"
+            'if [ "$1" = "-L" ]; then\n'
+            '  echo "ecdsa-sha2-nistp256 AAAAE2VjZHNh mock-touch-id-key"\n'
+            "  exit 0\n"
+            "fi\n"
+            "exit 0\n"
+        )
         mock_ssh_add.chmod(0o755)
 
         self.ssh_dir = Path(self.tmp_dir) / ".ssh"
@@ -83,7 +90,9 @@ class TestSSHInitKey(unittest.TestCase):
             env=self.env,
             timeout=5,
         )
-        self.assertEqual(res.returncode, 0, f"Script failed: {res.stderr}\nStdout: {res.stdout}")
+        self.assertEqual(
+            res.returncode, 0, f"Script failed: {res.stderr}\nStdout: {res.stdout}"
+        )
         self.assertIn("Generating Ed25519 key", res.stdout)
 
         # Verify ssh-keygen was called with -t ed25519
@@ -105,7 +114,15 @@ class TestSSHInitKey(unittest.TestCase):
     def test_rsa_mode_flag_generates_rsa_key(self) -> None:
         """Verify that explicitly passing -m rsa generates an RSA key."""
         res = subprocess.run(
-            [str(SCRIPT_PATH), "-h", "legacy-box.corp", "-m", "rsa", "-p", str(self.ssh_dir)],
+            [
+                str(SCRIPT_PATH),
+                "-h",
+                "legacy-box.corp",
+                "-m",
+                "rsa",
+                "-p",
+                str(self.ssh_dir),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -128,20 +145,37 @@ class TestSSHInitKey(unittest.TestCase):
         }
 
         res = subprocess.run(
-            [str(SCRIPT_PATH), "-h", "hardware-box.local", "-m", "hardware", "-p", str(self.ssh_dir)],
+            [
+                str(SCRIPT_PATH),
+                "-h",
+                "hardware-box.local",
+                "-m",
+                "hardware",
+                "-p",
+                str(self.ssh_dir),
+            ],
             capture_output=True,
             text=True,
             check=False,
             env=env,
             timeout=5,
         )
-        self.assertEqual(res.returncode, 0, f"Failed: {res.stderr}\nStdout: {res.stdout}")
+        self.assertEqual(
+            res.returncode, 0, f"Failed: {res.stderr}\nStdout: {res.stdout}"
+        )
         self.assertIn("Generating FIDO2 / ECDSA-SK hardware key", res.stdout)
         self.assertIn(f"Found FIDO security provider: {dummy_fido}", res.stdout)
 
         log = self.keygen_log.read_text()
         self.assertIn(f"-w {dummy_fido}", log)
         self.assertIn("-t ecdsa-sk", log)
+
+        # Verify key was created with -hardware suffix
+        expected_key = self.ssh_dir / "testuser@hardware-box.local-hardware"
+        self.assertTrue(expected_key.is_file())
+        self.assertTrue(
+            (self.ssh_dir / "testuser@hardware-box.local-hardware.pub").is_file()
+        )
 
         # Verify config has SecurityKeyProvider
         config_file = self.ssh_dir / "config"
@@ -150,6 +184,58 @@ class TestSSHInitKey(unittest.TestCase):
         self.assertIn("Host hardware-box.local", config_content)
         self.assertIn(f"SecurityKeyProvider {dummy_fido}", config_content)
 
+    def test_consecutive_runs_preserve_both_ed25519_and_hardware_keys(self) -> None:
+        """Verify that running default ed25519 and -m hardware does not overwrite files."""
+        dummy_fido = Path(self.tmp_dir) / "libfido2.dylib"
+        dummy_fido.write_text("mock libfido2")
+        env = {
+            **self.env,
+            "SSH_SK_PROVIDER": str(dummy_fido),
+        }
+
+        # 1. First run: standard Ed25519
+        res1 = subprocess.run(
+            [str(SCRIPT_PATH), "-h", "dual-box.local", "-p", str(self.ssh_dir)],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=5,
+        )
+        self.assertEqual(res1.returncode, 0)
+        ed_key = self.ssh_dir / "testuser@dual-box.local"
+        self.assertTrue(ed_key.is_file())
+
+        # 2. Second run: hardware key
+        res2 = subprocess.run(
+            [
+                str(SCRIPT_PATH),
+                "-h",
+                "dual-box.local",
+                "-m",
+                "hardware",
+                "-p",
+                str(self.ssh_dir),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=5,
+        )
+        self.assertEqual(res2.returncode, 0)
+        hw_key = self.ssh_dir / "testuser@dual-box.local-hardware"
+        self.assertTrue(hw_key.is_file())
+
+        # Both keys exist concurrently
+        self.assertTrue(ed_key.is_file())
+        self.assertTrue(hw_key.is_file())
+
+        # Config should contain both host blocks
+        config_content = (self.ssh_dir / "config").read_text()
+        self.assertIn("Host dual-box.local", config_content)
+        self.assertIn("Host dual-box.local-hardware", config_content)
+
     def test_se_mode_prompts_for_secretive_when_socket_missing(self) -> None:
         """Verify that -m se informs user to install Secretive when socket is missing."""
         env = {
@@ -157,7 +243,15 @@ class TestSSHInitKey(unittest.TestCase):
             "SECRETIVE_SOCKET": str(Path(self.tmp_dir) / "nonexistent.sock"),
         }
         res = subprocess.run(
-            [str(SCRIPT_PATH), "-h", "secure-box.local", "-m", "se", "-p", str(self.ssh_dir)],
+            [
+                str(SCRIPT_PATH),
+                "-h",
+                "secure-box.local",
+                "-m",
+                "se",
+                "-p",
+                str(self.ssh_dir),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -167,6 +261,48 @@ class TestSSHInitKey(unittest.TestCase):
         self.assertNotEqual(res.returncode, 0)
         self.assertIn("Secretive is required", res.stderr)
         self.assertIn("brew install --cask secretive", res.stderr)
+
+    def test_se_mode_extracts_key_when_socket_available(self) -> None:
+        """Verify that -m se creates -se stub and extracts public key from Secretive agent."""
+        import socket
+
+        sock_path = Path(self.tmp_dir) / "secretive.sock"
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.bind(str(sock_path))
+        self.addCleanup(sock.close)
+
+        env = {
+            **self.env,
+            "SECRETIVE_SOCKET": str(sock_path),
+        }
+        res = subprocess.run(
+            [
+                str(SCRIPT_PATH),
+                "-h",
+                "secure-box.local",
+                "-m",
+                "se",
+                "-p",
+                str(self.ssh_dir),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=5,
+        )
+        self.assertEqual(
+            res.returncode, 0, f"Failed: {res.stderr}\nStdout: {res.stdout}"
+        )
+        self.assertIn("Found Touch ID Secure Enclave key from Secretive", res.stdout)
+
+        se_key = self.ssh_dir / "testuser@secure-box.local-se"
+        self.assertTrue(se_key.is_file())
+        self.assertTrue((self.ssh_dir / "testuser@secure-box.local-se.pub").is_file())
+
+        config_content = (self.ssh_dir / "config").read_text()
+        self.assertIn("Host secure-box.local", config_content)
+        self.assertIn(f"IdentityAgent {sock_path}", config_content)
 
 
 if __name__ == "__main__":

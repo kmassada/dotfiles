@@ -87,7 +87,17 @@ elif [[ -n "$PUSH_TO_REMOTE" && "$PUSH_TO_REMOTE" != *"@"* ]]; then
     PUSH_TO_REMOTE="$SSH_USER@$PUSH_TO_REMOTE"
 fi
 
-KEY_FILE="$KEY_PATH_BASE/$SSH_USER@$SSH_HOST"
+KEY_SUFFIX=""
+case "$KEY_MODE" in
+    "generate_se"|"se"|"secure_enclave")
+        KEY_SUFFIX="-se"
+        ;;
+    "generate_hardware_key"|"hardware"|"ecdsa-sk"|"fido2")
+        KEY_SUFFIX="-hardware"
+        ;;
+esac
+
+KEY_FILE="$KEY_PATH_BASE/$SSH_USER@$SSH_HOST$KEY_SUFFIX"
 
 # --- 1. Environment Setup ---
 mkdir -p "$KEY_PATH_BASE"
@@ -113,6 +123,13 @@ find_fido_provider() {
     return 1
 }
 
+is_host_in_config() {
+    local target="$1"
+    local config="$2"
+    [[ -f "$config" ]] || return 1
+    awk -v target="$target" '$1 == "Host" { for (i=2; i<=NF; i++) { if ($i ~ /^#/) break; if ($i == target) { found=1; exit } } } END { exit !found }' "$config" 2>/dev/null
+}
+
 # --- 2. Key Acquisition ---
 FIDO_PROVIDER=""
 IS_SECRETIVE=false
@@ -124,7 +141,7 @@ else
     case "$KEY_MODE" in
         "generate_ed25519"|"ed25519")
             echo "🚀 Generating Ed25519 key..."
-            ssh-keygen -t ed25519 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -P ''
+            ssh-keygen -t ed25519 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -P ''
             ;;
         "generate_se"|"se"|"secure_enclave")
             if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -162,21 +179,21 @@ else
             ;;
         "generate_rsa"|"rsa")
             echo "🚀 Generating RSA 4096-bit key..."
-            ssh-keygen -t rsa -b 4096 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -P ''
+            ssh-keygen -t rsa -b 4096 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -P ''
             ;;
         "generate_hardware_key"|"hardware"|"ecdsa-sk"|"fido2")
             echo "🔑 Generating FIDO2 / ECDSA-SK hardware key..."
             if FIDO_PROVIDER=$(find_fido_provider); then
                 echo "ℹ️  Found FIDO security provider: $FIDO_PROVIDER"
                 echo "👉 Touch your hardware security key when it blinks..."
-                ssh-keygen -w "$FIDO_PROVIDER" -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -N ""
+                ssh-keygen -w "$FIDO_PROVIDER" -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -N ""
             else
                 if [[ "$(uname -s)" == "Darwin" ]]; then
                     echo "❌ Error: libfido2 is required on macOS for hardware keys. Install it with: brew install libfido2" >&2
                     exit 1
                 fi
                 echo "👉 Touch your hardware security key when it blinks..."
-                ssh-keygen -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -N ""
+                ssh-keygen -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -N ""
             fi
             ;;
         "pull_from_gcloud"|"gcloud")
@@ -200,11 +217,22 @@ fi
 touch "$KEY_PATH_BASE/config"
 chmod 600 "$KEY_PATH_BASE/config"
 
-if ! grep -q "Host $SSH_HOST" "$KEY_PATH_BASE/config" 2>/dev/null; then
+CONFIG_ENTRY_HOST="$SSH_HOST$KEY_SUFFIX"
+if [[ -n "$KEY_SUFFIX" ]]; then
+    if ! is_host_in_config "$SSH_HOST" "$KEY_PATH_BASE/config"; then
+        CONFIG_HOSTS="$SSH_HOST $CONFIG_ENTRY_HOST"
+    else
+        CONFIG_HOSTS="$CONFIG_ENTRY_HOST"
+    fi
+else
+    CONFIG_HOSTS="$SSH_HOST"
+fi
+
+if ! is_host_in_config "$CONFIG_ENTRY_HOST" "$KEY_PATH_BASE/config"; then
     echo "📝 Updating SSH config..."
     {
         echo ""
-        echo "Host $SSH_HOST"
+        echo "Host $CONFIG_HOSTS"
         echo "    HostName $SSH_HOST"
         echo "    User $SSH_USER"
         echo "    IdentityFile $KEY_FILE"
@@ -218,9 +246,9 @@ if ! grep -q "Host $SSH_HOST" "$KEY_PATH_BASE/config" 2>/dev/null; then
             echo "    UseKeychain yes"
         fi
     } >> "$KEY_PATH_BASE/config"
-    echo "✅ Success! Configured $SSH_HOST in $KEY_PATH_BASE/config"
+    echo "✅ Success! Configured $CONFIG_HOSTS in $KEY_PATH_BASE/config"
 else
-    echo "ℹ️  Host $SSH_HOST already exists in config. Skipping update."
+    echo "ℹ️  Host $CONFIG_ENTRY_HOST already exists in config. Skipping update."
 fi
 
 # Register with macOS Keychain / SSH Agent
@@ -296,6 +324,8 @@ if [ "$TEST_CONNECTION" = true ]; then
 else
     if [[ "$SSH_HOST" == *"github.com"* ]]; then
         echo "💡 Test connection anytime: ssh -T git@$SSH_HOST"
+    elif [[ -n "$KEY_SUFFIX" ]]; then
+        echo "💡 Test connection anytime: ssh -T $SSH_USER@$CONFIG_ENTRY_HOST"
     else
         echo "💡 Test connection anytime: ssh -T $SSH_USER@$SSH_HOST"
     fi
