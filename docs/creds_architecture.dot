@@ -1,0 +1,178 @@
+// =============================================================================
+// Zero-Disk Credential Engine & Lifecycle Architecture
+// =============================================================================
+// Render via Graphviz (dot) or open in d3-graphviz viewer.
+// NO PII: All identifiers, projects, tokens, and users are strictly generic.
+// =============================================================================
+
+digraph ZeroDiskCredentialEngine {
+  graph [
+    bgcolor="#0d1117",
+    fontname="Helvetica, Arial, sans-serif",
+    fontsize=13,
+    rankdir=TB,
+    splines=spline,
+    pad="0.6",
+    nodesep="0.65",
+    ranksep="0.85",
+    fontcolor="#c9d1d9"
+  ];
+
+  node [
+    fontname="Helvetica, Arial, sans-serif",
+    fontsize=11,
+    shape=box,
+    style="rounded,filled",
+    color="#30363d",
+    fontcolor="#f0f6fc",
+    margin="0.25,0.18"
+  ];
+
+  edge [
+    fontname="Helvetica, Arial, sans-serif",
+    fontsize=9,
+    color="#58a6ff",
+    fontcolor="#8b949e",
+    arrowsize=0.75
+  ];
+
+  // -------------------------------------------------------------
+  // Cluster 1: Callers & Execution Surfaces
+  // -------------------------------------------------------------
+  subgraph cluster_callers {
+    label="1. Execution Surfaces & Callers";
+    color="#30363d";
+    style="rounded,dashed";
+    bgcolor="#161b22";
+
+    c_user [label="Developer / User\n(Interactive Terminal)", fillcolor="#1f6feb"];
+    c_agent [label="Agent Workflows\n(CLI / IDE / Subagent)", fillcolor="#1f6feb"];
+    c_run [label="Process Runner\n(cred run -- <command>)", fillcolor="#1f6feb"];
+  }
+
+  // -------------------------------------------------------------
+  // Cluster 2: Service Onboarding Wizards
+  // -------------------------------------------------------------
+  subgraph cluster_wizards {
+    label="2. Service Onboarding & Verification Wizards (scripts/setup-*.sh)";
+    color="#2ea043";
+    style="rounded";
+    bgcolor="#161b22";
+
+    w_slack [
+      label="setup-slack.sh\n• Flags: --apply, --token\n• Query: slack.com/api/auth.test\n• Auto-detects Team & Bot ID",
+      fillcolor="#238636"
+    ];
+    w_cf [
+      label="setup-cloudflare.sh\n• Flags: --apply, --token, --account-id, --force\n• Dual Scope: User vs Account Token Verify\n• Auto-discovers Accounts",
+      fillcolor="#238636"
+    ];
+    w_gws [
+      label="setup-gws.sh\n• Google Workspace CLI Config\n• OAuth Credential Audit",
+      fillcolor="#238636"
+    ];
+  }
+
+  // -------------------------------------------------------------
+  // Cluster 3: Credential Engine & Ladder
+  // -------------------------------------------------------------
+  subgraph cluster_engine {
+    label="3. Core Credential Engine (cred / creds CLI)";
+    color="#388bfd";
+    style="rounded";
+    bgcolor="#161b22";
+
+    subgraph cluster_ladder {
+      label="Priority Resolution Ladder (cred get <service>/<key>)";
+      color="#30363d";
+      style="rounded,filled";
+      bgcolor="#0d1117";
+
+      l1 [label="Level 1: CLI Flags Override\n(--token / --account-id)", fillcolor="#21262d", color="#58a6ff"];
+      l2 [label="Level 2: Process Environment\n($<SERVICE>_<KEY>)", fillcolor="#21262d", color="#58a6ff"];
+      l3 [label="Level 3: Password Store (pass)\nai-agents/<service>/<key>", fillcolor="#21262d", color="#58a6ff"];
+      l4 [label="Level 4: Bitwarden Secrets Manager\n(bws secret list | stdin=DEVNULL)", fillcolor="#21262d", color="#58a6ff"];
+      l5 [label="Level 5: Bitwarden Vault CLI\n(bw get password | stdin=DEVNULL)", fillcolor="#21262d", color="#58a6ff"];
+      l6 [label="Level 6: GCP Secret Manager\n(gcloud --quiet secrets versions access)", fillcolor="#21262d", color="#58a6ff"];
+
+      l1 -> l2 [label="fallback if unset", style=dashed];
+      l2 -> l3 [label="fallback if unset", style=dashed];
+      l3 -> l4 [label="fallback if unset", style=dashed];
+      l4 -> l5 [label="fallback if unset", style=dashed];
+      l5 -> l6 [label="fallback if unset", style=dashed];
+    }
+
+    safeguard [
+      label="Non-Blocking Safeguards Gate\n• stdin=subprocess.DEVNULL on all child CLIs\n• Sub-second timeouts to avoid hangs\n• Suppresses interactive terminal prompts",
+      fillcolor="#21262d",
+      color="#f85149",
+      fontcolor="#f85149"
+    ];
+    l6 -> safeguard [style=dotted, color="#f85149"];
+  }
+
+  // -------------------------------------------------------------
+  // Cluster 4: Encrypted Persistence
+  // -------------------------------------------------------------
+  subgraph cluster_storage {
+    label="4. Encrypted Persistence (cred set)";
+    color="#8957e5";
+    style="rounded";
+    bgcolor="#161b22";
+
+    v_pass [
+      label="Local Encrypted Vault\nPassword Store (pass)\nPath: ai-agents/<service>/*",
+      shape=cylinder,
+      fillcolor="#6e40c9"
+    ];
+    v_cloud [
+      label="Remote Vault Backends\n(Bitwarden SM / GCP Secret Manager)",
+      shape=cylinder,
+      fillcolor="#492b83"
+    ];
+  }
+
+  // -------------------------------------------------------------
+  // Cluster 5: External APIs & Target Tooling
+  // -------------------------------------------------------------
+  subgraph cluster_targets {
+    label="5. External APIs & Target Tooling";
+    color="#d29922";
+    style="rounded";
+    bgcolor="#161b22";
+
+    api_slack [label="Slack API\n(slack.com/api/auth.test)", fillcolor="#9e6a03"];
+    api_cf_user [label="Cloudflare User API\n(/client/v4/user/tokens/verify)", fillcolor="#9e6a03"];
+    api_cf_acc [label="Cloudflare Account API\n(/client/v4/accounts/{id}/tokens/verify)", fillcolor="#9e6a03"];
+    target_mcp [label="Model Context Protocol (MCP)\nSlack, Cloudflare & GWS Servers", fillcolor="#1f6feb"];
+  }
+
+  // -------------------------------------------------------------
+  // Relationships & Dataflows
+  // -------------------------------------------------------------
+  c_user -> w_slack [label="run wizard"];
+  c_user -> w_cf [label="run wizard"];
+  c_user -> w_gws [label="run wizard"];
+  c_user -> l1 [label="cred get / cred set"];
+  c_agent -> l1 [label="resolve keys"];
+  c_run -> l1 [label="cred run"];
+
+  // Wizard Verification Flows
+  w_slack -> api_slack [label="1. Validate Bearer Token"];
+  w_slack -> v_pass [label="2. cred set slack/*", color="#3fb950"];
+
+  w_cf -> api_cf_user [label="1. Try User Verify"];
+  api_cf_user -> w_cf [label="Code 1000: Invalid", style=dotted, color="#f85149"];
+  w_cf -> api_cf_acc [label="2. Fallback to Account Verify"];
+  w_cf -> v_pass [label="3. cred set cloudflare/*", color="#3fb950"];
+
+  w_gws -> v_pass [label="cred set gws/*", color="#3fb950"];
+
+  // Vault reading by ladder
+  v_pass -> l3 [style=dotted, label="pass show"];
+  v_cloud -> l4 [style=dotted];
+  v_cloud -> l6 [style=dotted];
+
+  // Runtime In-Memory Injection
+  c_run -> target_mcp [label="Zero-Disk In-Memory Injection\n(Process Env)", color="#3fb950", penwidth=2];
+}
