@@ -30,8 +30,9 @@ Options:
   -u, --user <user>     SSH user (Defaults to current user: $SSH_USER)
   -m, --mode <mode>     Key algorithm/mode:
                           - generate_ed25519 (default / ed25519): Modern elliptic curve key
+                          - generate_se (se / secure_enclave): Apple Silicon Secure Enclave (Touch ID)
+                          - generate_hardware_key (hardware / ecdsa-sk): FIDO2 / Google Titan / YubiKey
                           - generate_rsa (rsa): RSA 4096-bit legacy key
-                          - generate_hardware_key (hardware): FIDO2 / ECDSA-SK hardware token
                           - pull_from_gcloud (gcloud): Fetch private key from GCP Secret Manager
   -p, --path <path>     Base directory for keys (Defaults to ~/.ssh)
   -c, --clip            Copy public key to system clipboard (pbcopy / wl-copy / xclip)
@@ -42,7 +43,8 @@ Options:
 
 Examples:
   $(basename "$0") -h github.com -t                        # Ed25519 key for GitHub
-  $(basename "$0") -h mac-mini.local --push                # Ed25519 key pushed to remote server
+  $(basename "$0") -h mac-mini.local -m se --push          # Touch ID / Secure Enclave key pushed to server
+  $(basename "$0") -h mac-mini.local -m hardware --push    # Titan / FIDO2 key pushed to server
   $(basename "$0") -h legacy-box.corp -m rsa               # RSA 4096-bit fallback key
 EOF
     exit 0
@@ -102,6 +104,23 @@ else
             echo "🚀 Generating Ed25519 key..."
             ssh-keygen -t ed25519 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -P ''
             ;;
+        "generate_se"|"se"|"secure_enclave")
+            if [[ "$(uname -s)" != "Darwin" ]]; then
+                echo "❌ Error: Secure Enclave (-m se) requires macOS." >&2
+                exit 1
+            fi
+            DYLIB="${SSH_KEYCHAIN_DYLIB:-/usr/lib/ssh-keychain.dylib}"
+            if [[ ! -f "$DYLIB" ]]; then
+                echo "❌ Error: SecurityKeyProvider library not found at $DYLIB." >&2
+                exit 1
+            fi
+            echo "🔐 Provisioning Apple Silicon Secure Enclave identity..."
+            if command -v sc_auth >/dev/null 2>&1; then
+                sc_auth create-ctk-identity -l "$SSH_USER@$SSH_HOST" -k p-256-ne -t bio 2>/dev/null || true
+            fi
+            echo "🚀 Generating Touch ID-backed ECDSA-SK key stub..."
+            ssh-keygen -w "$DYLIB" -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -N ""
+            ;;
         "generate_rsa"|"rsa")
             echo "🚀 Generating RSA 4096-bit key..."
             ssh-keygen -t rsa -b 4096 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -P ''
@@ -141,7 +160,10 @@ if ! grep -q "Host $SSH_HOST" "$KEY_PATH_BASE/config" 2>/dev/null; then
         echo "    IdentityFile $KEY_FILE"
         echo "    Port $SSH_PORT"
         echo "    AddKeysToAgent yes"
-        if [[ "$(uname -s)" == "Darwin" ]]; then
+        if [[ "$KEY_MODE" == "generate_se" || "$KEY_MODE" == "se" || "$KEY_MODE" == "secure_enclave" ]]; then
+            DYLIB="${SSH_KEYCHAIN_DYLIB:-/usr/lib/ssh-keychain.dylib}"
+            echo "    SecurityKeyProvider $DYLIB"
+        elif [[ "$(uname -s)" == "Darwin" ]]; then
             echo "    UseKeychain yes"
         fi
     } >> "$KEY_PATH_BASE/config"

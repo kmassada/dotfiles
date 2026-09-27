@@ -117,6 +117,47 @@ class TestSSHInitKey(unittest.TestCase):
         log = self.keygen_log.read_text()
         self.assertIn("-t rsa -b 4096", log)
 
+    def test_se_mode_generates_se_key_and_config(self) -> None:
+        """Verify that -m se invokes sc_auth and writes SecurityKeyProvider."""
+        # Create mock sc_auth
+        mock_sc_auth = self.mock_bin / "sc_auth"
+        mock_sc_auth.write_text('#!/bin/sh\necho "MOCK_SC_AUTH: $@" >> "' + str(self.keygen_log) + '"\nexit 0\n')
+        mock_sc_auth.chmod(0o755)
+
+        # Create dummy dylib for testing
+        dummy_dylib = Path(self.tmp_dir) / "dummy-keychain.dylib"
+        dummy_dylib.write_text("mock dylib")
+
+        env = {
+            **self.env,
+            "SSH_KEYCHAIN_DYLIB": str(dummy_dylib),
+        }
+
+        res = subprocess.run(
+            [str(SCRIPT_PATH), "-h", "secure-box.local", "-m", "se", "-p", str(self.ssh_dir)],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=5,
+        )
+        self.assertEqual(res.returncode, 0, f"Failed: {res.stderr}\nStdout: {res.stdout}")
+        self.assertIn("Provisioning Apple Silicon Secure Enclave identity", res.stdout)
+        self.assertIn("Generating Touch ID-backed ECDSA-SK key stub", res.stdout)
+
+        # Verify sc_auth and ssh-keygen invocations
+        log = self.keygen_log.read_text()
+        self.assertIn("MOCK_SC_AUTH: create-ctk-identity", log)
+        self.assertIn("-w " + str(dummy_dylib), log)
+        self.assertIn("-t ecdsa-sk", log)
+
+        # Verify config has SecurityKeyProvider
+        config_file = self.ssh_dir / "config"
+        self.assertTrue(config_file.is_file())
+        config_content = config_file.read_text()
+        self.assertIn("Host secure-box.local", config_content)
+        self.assertIn(f"SecurityKeyProvider {dummy_dylib}", config_content)
+
 
 if __name__ == "__main__":
     unittest.main()
