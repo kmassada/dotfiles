@@ -236,12 +236,8 @@ class TestSSHInitKey(unittest.TestCase):
         self.assertIn("Host dual-box.local", config_content)
         self.assertIn("Host dual-box.local-hardware", config_content)
 
-    def test_se_mode_prompts_for_secretive_when_socket_missing(self) -> None:
-        """Verify that -m se informs user to install Secretive when socket is missing."""
-        env = {
-            **self.env,
-            "SECRETIVE_SOCKET": str(Path(self.tmp_dir) / "nonexistent.sock"),
-        }
+    def test_se_mode_reports_removal(self) -> None:
+        """Verify that -m se reports removal and instructs user to use -m hardware."""
         res = subprocess.run(
             [
                 str(SCRIPT_PATH),
@@ -255,54 +251,14 @@ class TestSSHInitKey(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
-            env=env,
+            env=self.env,
             timeout=5,
         )
         self.assertNotEqual(res.returncode, 0)
-        self.assertIn("Secretive is required", res.stderr)
-        self.assertIn("brew install --cask secretive", res.stderr)
-
-    def test_se_mode_extracts_key_when_socket_available(self) -> None:
-        """Verify that -m se creates -se stub and extracts public key from Secretive agent."""
-        import socket
-
-        sock_path = Path(self.tmp_dir) / "secretive.sock"
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind(str(sock_path))
-        self.addCleanup(sock.close)
-
-        env = {
-            **self.env,
-            "SECRETIVE_SOCKET": str(sock_path),
-        }
-        res = subprocess.run(
-            [
-                str(SCRIPT_PATH),
-                "-h",
-                "secure-box.local",
-                "-m",
-                "se",
-                "-p",
-                str(self.ssh_dir),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-            timeout=5,
+        self.assertIn(
+            "Secure Enclave (-m se) via Secretive has been removed", res.stderr
         )
-        self.assertEqual(
-            res.returncode, 0, f"Failed: {res.stderr}\nStdout: {res.stdout}"
-        )
-        self.assertIn("Found Touch ID Secure Enclave key from Secretive", res.stdout)
-
-        se_key = self.ssh_dir / "testuser@secure-box.local-se"
-        self.assertTrue(se_key.is_file())
-        self.assertTrue((self.ssh_dir / "testuser@secure-box.local-se.pub").is_file())
-
-        config_content = (self.ssh_dir / "config").read_text()
-        self.assertIn("Host secure-box.local", config_content)
-        self.assertIn(f"IdentityAgent {sock_path}", config_content)
+        self.assertIn("Use '-m hardware'", res.stderr)
 
 
 if __name__ == "__main__":

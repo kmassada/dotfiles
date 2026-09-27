@@ -30,7 +30,6 @@ Options:
   -u, --user <user>     SSH user (Defaults to current user: $SSH_USER)
   -m, --mode <mode>     Key algorithm/mode:
                           - generate_ed25519 (default / ed25519): Modern elliptic curve key
-                          - generate_se (se / secure_enclave): Apple Silicon Secure Enclave (Touch ID)
                           - generate_hardware_key (hardware / ecdsa-sk): FIDO2 / Google Titan / YubiKey
                           - generate_rsa (rsa): RSA 4096-bit legacy key
                           - pull_from_gcloud (gcloud): Fetch private key from GCP Secret Manager
@@ -43,7 +42,6 @@ Options:
 
 Examples:
   $(basename "$0") -h github.com -t                        # Ed25519 key for GitHub
-  $(basename "$0") -h mac-mini.local -m se --push          # Touch ID / Secure Enclave key pushed to server
   $(basename "$0") -h mac-mini.local -m hardware --push    # Titan / FIDO2 key pushed to server
   $(basename "$0") -h legacy-box.corp -m rsa               # RSA 4096-bit fallback key
 EOF
@@ -89,9 +87,6 @@ fi
 
 KEY_SUFFIX=""
 case "$KEY_MODE" in
-    "generate_se"|"se"|"secure_enclave")
-        KEY_SUFFIX="-se"
-        ;;
     "generate_hardware_key"|"hardware"|"ecdsa-sk"|"fido2")
         KEY_SUFFIX="-hardware"
         ;;
@@ -132,8 +127,6 @@ is_host_in_config() {
 
 # --- 2. Key Acquisition ---
 FIDO_PROVIDER=""
-IS_SECRETIVE=false
-SECRETIVE_SOCKET="${SECRETIVE_SOCKET:-$HOME/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh}"
 
 if [[ -f "$KEY_FILE" && -s "$KEY_FILE" ]]; then
     echo "ℹ️  Key already exists at $KEY_FILE. Skipping generation."
@@ -144,38 +137,8 @@ else
             ssh-keygen -t ed25519 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -P ''
             ;;
         "generate_se"|"se"|"secure_enclave")
-            if [[ "$(uname -s)" != "Darwin" ]]; then
-                echo "❌ Error: Secure Enclave (-m se) requires macOS." >&2
-                exit 1
-            fi
-            if [[ -S "$SECRETIVE_SOCKET" ]]; then
-                echo "🔐 Detected Secretive Secure Enclave agent at $SECRETIVE_SOCKET"
-                SE_KEYS=$(SSH_AUTH_SOCK="$SECRETIVE_SOCKET" ssh-add -L 2>/dev/null || true)
-                if [[ -z "$SE_KEYS" ]]; then
-                    echo "⚠️  No keys currently active in Secretive." >&2
-                    echo "   Please open Secretive.app, click '+' to create your Touch ID key, then rerun this script." >&2
-                    exit 1
-                fi
-                echo "Found Touch ID Secure Enclave key from Secretive."
-                echo "$SE_KEYS" | head -n1 > "${KEY_FILE}.pub"
-                chmod 644 "${KEY_FILE}.pub"
-                touch "$KEY_FILE"
-                chmod 600 "$KEY_FILE"
-                IS_SECRETIVE=true
-            else
-                {
-                    echo "❌ Secretive is required to bridge OpenSSH with the Apple Secure Enclave."
-                    echo ""
-                    echo "To enable Touch ID for SSH:"
-                    echo "  1. Install Secretive: brew install --cask secretive"
-                    echo "  2. Open Secretive from Applications and click '+' to generate a Touch ID key"
-                    echo "  3. Rerun: $(basename "$0") -h $SSH_HOST -m se --push"
-                    echo ""
-                    echo "Tip: To use your physical Titan/FIDO2 security key right now instead, run:"
-                    echo "  $(basename "$0") -h $SSH_HOST -m hardware --push"
-                } >&2
-                exit 1
-            fi
+            echo "❌ Error: Secure Enclave (-m se) via Secretive has been removed. Use '-m hardware' for FIDO2 / Google Titan / YubiKey security keys." >&2
+            exit 1
             ;;
         "generate_rsa"|"rsa")
             echo "🚀 Generating RSA 4096-bit key..."
@@ -240,8 +203,6 @@ if ! is_host_in_config "$CONFIG_ENTRY_HOST" "$KEY_PATH_BASE/config"; then
         echo "    AddKeysToAgent yes"
         if [[ -n "${FIDO_PROVIDER:-}" ]]; then
             echo "    SecurityKeyProvider $FIDO_PROVIDER"
-        elif [ "${IS_SECRETIVE:-false}" = true ]; then
-            echo "    IdentityAgent $SECRETIVE_SOCKET"
         elif [[ "$(uname -s)" == "Darwin" ]]; then
             echo "    UseKeychain yes"
         fi

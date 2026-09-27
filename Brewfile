@@ -124,8 +124,6 @@ cask "maccy"
 cask "obsidian"
 # Team communication and messaging platform
 cask "slack"
-# Store SSH keys in the Secure Enclave with Touch ID
-cask "secretive"
 # Control your Sonos system
 cask "sonos"
 # Music streaming service
