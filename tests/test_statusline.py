@@ -59,7 +59,7 @@ class TestAgyStatusline(unittest.TestCase):
         badge, sub = statusline.resolve_state_and_agent(working_payload)
         self.assertIn("󱥁 mittens", statusline.strip_ansi(badge))
         self.assertIsNotNone(sub)
-        self.assertIn("⚡ research-google (+1)", statusline.strip_ansi(sub or ""))
+        self.assertIn("󱐋 research-google (+1)", statusline.strip_ansi(sub or ""))
 
         # Tool confirmation pending
         tool_payload = {
