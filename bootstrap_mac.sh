@@ -42,6 +42,9 @@ MACHINE_ROLE=""
 MACHINE_NAME=""
 MACHINE_ICON=""
 MACHINE_COLOR=""
+NO_PASSAGE=false
+PASSAGE_REPO=""
+PASSAGE_FIDO2=false
 
 usage() {
     cat << USAGE
@@ -60,6 +63,9 @@ Options:
   --no-webapps          Skip Progressive Web Apps setup (automatically skipped on *.internal)
   --no-agents           Skip AI agent environment setup (skills, rules, MCP, casks)
   --with-claude         Opt-in to install and configure Claude Code alongside Antigravity
+  --no-passage          Skip passage vault and hardware key setup
+  --passage-repo <url>  Sync/clone passage vault from an explicit Git repository URL
+  --passage-fido2       Opt-in to enroll FIDO2 hardware token (default: Touch ID only)
   --no-ssh              Skip SSH client key setup for GitHub
   --no-sshd             Skip enabling Remote Login (SSH server)
   --no-pull             Skip git pull if dotfiles repo already exists
@@ -90,6 +96,9 @@ while [[ $# -gt 0 ]]; do
         --no-webapps)        NO_WEBAPPS=true; shift ;;
         --no-agents|--no-agy) NO_AGENTS=true; NO_AGY=true; shift ;;
         --with-claude)       WITH_CLAUDE=true; shift ;;
+        --no-passage)        NO_PASSAGE=true; shift ;;
+        --passage-repo)      PASSAGE_REPO="$2"; shift 2 ;;
+        --passage-fido2)     PASSAGE_FIDO2=true; shift ;;
         --no-ssh)      NO_SSH=true; shift ;;
         --no-sshd)     NO_SSHD=true; shift ;;
         --no-pull)     NO_PULL=true; shift ;;
@@ -423,7 +432,27 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 12. Finished
+# 13. Passage Vault & Hardware Security Enrollment
+# ------------------------------------------------------------------------------
+if [ "$NO_PASSAGE" = false ]; then
+    PASSAGE_SETUP_SCRIPT="$DOTFILES_DIR/scripts/setup-passage.sh"
+    if [[ -x "$PASSAGE_SETUP_SCRIPT" ]]; then
+        log_info "Configuring passage vault and hardware security enrollment..."
+        PASSAGE_FLAGS=(--apply)
+        if [[ -n "$PASSAGE_REPO" ]]; then
+            PASSAGE_FLAGS+=(--repo "$PASSAGE_REPO")
+        fi
+        if [ "$PASSAGE_FIDO2" = true ]; then
+            PASSAGE_FLAGS+=(--fido2)
+        fi
+        "$PASSAGE_SETUP_SCRIPT" "${PASSAGE_FLAGS[@]}"
+    fi
+else
+    log_info "Skipping passage setup (--no-passage)."
+fi
+
+# ------------------------------------------------------------------------------
+# 14. Finished
 # ------------------------------------------------------------------------------
 echo ""
 log_success "macOS bootstrap complete!"
