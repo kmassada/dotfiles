@@ -3,9 +3,16 @@
 ^README.*
 .*\.sh$
 .*\.md$
+.*\.d2$
+.*\.dot$
 ^LICENSE$
 ^\.git.*
 ^scripts$
 ^agents$
+^tests$
+^docs$
 ^\.gnupg$
+^\.ruff_cache.*
+^\.pytest_cache.*
+.*__pycache__.*
 ^\.stow-local-ignore$
