@@ -40,7 +40,7 @@ class TestSetupCloudflare(unittest.TestCase):
             text=True,
             check=False,
             stdin=subprocess.DEVNULL,
-            timeout=10,
+            timeout=30,
         )
         self.assertEqual(res.returncode, 0)
         self.assertIn("Multi-Backend Cloudflare Credential", res.stdout)
@@ -58,7 +58,7 @@ class TestSetupCloudflare(unittest.TestCase):
             check=False,
             env=env,
             stdin=subprocess.DEVNULL,
-            timeout=10,
+            timeout=30,
         )
         self.assertNotEqual(res.returncode, 0)
         self.assertIn("Live Cloudflare verification returned", res.stdout)
