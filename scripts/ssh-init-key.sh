@@ -95,8 +95,30 @@ chmod 700 "$KEY_PATH_BASE"
 touch "$KEY_PATH_BASE/authorized_keys"
 chmod 600 "$KEY_PATH_BASE/authorized_keys"
 
+find_fido_provider() {
+    local candidates=(
+        "${SSH_SK_PROVIDER:-}"
+        "/opt/homebrew/lib/libfido2.dylib"
+        "/usr/local/lib/libfido2.dylib"
+        "/usr/lib/x86_64-linux-gnu/libfido2.so"
+        "/usr/lib/aarch64-linux-gnu/libfido2.so"
+        "/usr/lib/libfido2.so"
+    )
+    for c in "${candidates[@]}"; do
+        if [[ -n "$c" && -f "$c" ]]; then
+            echo "$c"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # --- 2. Key Acquisition ---
-if [[ -f "$KEY_FILE" ]]; then
+FIDO_PROVIDER=""
+IS_SECRETIVE=false
+SECRETIVE_SOCKET="${SECRETIVE_SOCKET:-$HOME/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh}"
+
+if [[ -f "$KEY_FILE" && -s "$KEY_FILE" ]]; then
     echo "ℹ️  Key already exists at $KEY_FILE. Skipping generation."
 else
     case "$KEY_MODE" in
@@ -109,25 +131,53 @@ else
                 echo "❌ Error: Secure Enclave (-m se) requires macOS." >&2
                 exit 1
             fi
-            DYLIB="${SSH_KEYCHAIN_DYLIB:-/usr/lib/ssh-keychain.dylib}"
-            if [[ ! -f "$DYLIB" ]]; then
-                echo "❌ Error: SecurityKeyProvider library not found at $DYLIB." >&2
+            if [[ -S "$SECRETIVE_SOCKET" ]]; then
+                echo "🔐 Detected Secretive Secure Enclave agent at $SECRETIVE_SOCKET"
+                SE_KEYS=$(SSH_AUTH_SOCK="$SECRETIVE_SOCKET" ssh-add -L 2>/dev/null || true)
+                if [[ -z "$SE_KEYS" ]]; then
+                    echo "⚠️  No keys currently active in Secretive." >&2
+                    echo "   Please open Secretive.app, click '+' to create your Touch ID key, then rerun this script." >&2
+                    exit 1
+                fi
+                echo "Found Touch ID Secure Enclave key from Secretive."
+                echo "$SE_KEYS" | head -n1 > "${KEY_FILE}.pub"
+                chmod 644 "${KEY_FILE}.pub"
+                touch "$KEY_FILE"
+                chmod 600 "$KEY_FILE"
+                IS_SECRETIVE=true
+            else
+                {
+                    echo "❌ Secretive is required to bridge OpenSSH with the Apple Secure Enclave."
+                    echo ""
+                    echo "To enable Touch ID for SSH:"
+                    echo "  1. Install Secretive: brew install --cask secretive"
+                    echo "  2. Open Secretive from Applications and click '+' to generate a Touch ID key"
+                    echo "  3. Rerun: $(basename "$0") -h $SSH_HOST -m se --push"
+                    echo ""
+                    echo "Tip: To use your physical Titan/FIDO2 security key right now instead, run:"
+                    echo "  $(basename "$0") -h $SSH_HOST -m hardware --push"
+                } >&2
                 exit 1
             fi
-            echo "🔐 Provisioning Apple Silicon Secure Enclave identity..."
-            if command -v sc_auth >/dev/null 2>&1; then
-                sc_auth create-ctk-identity -l "$SSH_USER@$SSH_HOST" -k p-256-ne -t bio 2>/dev/null || true
-            fi
-            echo "🚀 Generating Touch ID-backed ECDSA-SK key stub..."
-            ssh-keygen -w "$DYLIB" -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -N ""
             ;;
         "generate_rsa"|"rsa")
             echo "🚀 Generating RSA 4096-bit key..."
             ssh-keygen -t rsa -b 4096 -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -P ''
             ;;
-        "generate_hardware_key"|"hardware"|"ecdsa-sk")
-            echo "🔑 Generating ECDSA-SK hardware key..."
-            ssh-keygen -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -P ''
+        "generate_hardware_key"|"hardware"|"ecdsa-sk"|"fido2")
+            echo "🔑 Generating FIDO2 / ECDSA-SK hardware key..."
+            if FIDO_PROVIDER=$(find_fido_provider); then
+                echo "ℹ️  Found FIDO security provider: $FIDO_PROVIDER"
+                echo "👉 Touch your hardware security key when it blinks..."
+                ssh-keygen -w "$FIDO_PROVIDER" -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -N ""
+            else
+                if [[ "$(uname -s)" == "Darwin" ]]; then
+                    echo "❌ Error: libfido2 is required on macOS for hardware keys. Install it with: brew install libfido2" >&2
+                    exit 1
+                fi
+                echo "👉 Touch your hardware security key when it blinks..."
+                ssh-keygen -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST" -N ""
+            fi
             ;;
         "pull_from_gcloud"|"gcloud")
             SECRET_NAME=$(echo "$SSH_HOST" | tr . -)
@@ -160,9 +210,10 @@ if ! grep -q "Host $SSH_HOST" "$KEY_PATH_BASE/config" 2>/dev/null; then
         echo "    IdentityFile $KEY_FILE"
         echo "    Port $SSH_PORT"
         echo "    AddKeysToAgent yes"
-        if [[ "$KEY_MODE" == "generate_se" || "$KEY_MODE" == "se" || "$KEY_MODE" == "secure_enclave" ]]; then
-            DYLIB="${SSH_KEYCHAIN_DYLIB:-/usr/lib/ssh-keychain.dylib}"
-            echo "    SecurityKeyProvider $DYLIB"
+        if [[ -n "${FIDO_PROVIDER:-}" ]]; then
+            echo "    SecurityKeyProvider $FIDO_PROVIDER"
+        elif [ "${IS_SECRETIVE:-false}" = true ]; then
+            echo "    IdentityAgent $SECRETIVE_SOCKET"
         elif [[ "$(uname -s)" == "Darwin" ]]; then
             echo "    UseKeychain yes"
         fi
