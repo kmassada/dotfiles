@@ -164,7 +164,7 @@ class TestSSHInitKey(unittest.TestCase):
             res.returncode, 0, f"Failed: {res.stderr}\nStdout: {res.stdout}"
         )
         self.assertIn("Generating FIDO2 / ECDSA-SK hardware key", res.stdout)
-        self.assertIn(f"Found FIDO security provider: {dummy_fido}", res.stdout)
+        self.assertIn(f"Found custom FIDO security provider: {dummy_fido}", res.stdout)
 
         log = self.keygen_log.read_text()
         self.assertIn(f"-w {dummy_fido}", log)

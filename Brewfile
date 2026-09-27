@@ -53,6 +53,8 @@ brew "kubectx"
 brew "lazygit"
 # FIDO2 library and tools for hardware security keys
 brew "libfido2"
+# OpenBSD freely-licensed SSH connectivity tools with built-in FIDO2 support
+brew "openssh"
 # Linux virtual machines
 brew "lima"
 # CLI for Node.js style checker and lint tool for Markdown files

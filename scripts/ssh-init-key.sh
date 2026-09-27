@@ -101,20 +101,10 @@ touch "$KEY_PATH_BASE/authorized_keys"
 chmod 600 "$KEY_PATH_BASE/authorized_keys"
 
 find_fido_provider() {
-    local candidates=(
-        "${SSH_SK_PROVIDER:-}"
-        "/opt/homebrew/lib/libfido2.dylib"
-        "/usr/local/lib/libfido2.dylib"
-        "/usr/lib/x86_64-linux-gnu/libfido2.so"
-        "/usr/lib/aarch64-linux-gnu/libfido2.so"
-        "/usr/lib/libfido2.so"
-    )
-    for c in "${candidates[@]}"; do
-        if [[ -n "$c" && -f "$c" ]]; then
-            echo "$c"
-            return 0
-        fi
-    done
+    if [[ -n "${SSH_SK_PROVIDER:-}" && -f "${SSH_SK_PROVIDER:-}" ]]; then
+        echo "$SSH_SK_PROVIDER"
+        return 0
+    fi
     return 1
 }
 
@@ -146,15 +136,16 @@ else
             ;;
         "generate_hardware_key"|"hardware"|"ecdsa-sk"|"fido2")
             echo "🔑 Generating FIDO2 / ECDSA-SK hardware key..."
+            if [[ "$(uname -s)" == "Darwin" ]] && [[ "$(which ssh-keygen 2>/dev/null)" == "/usr/bin/ssh-keygen" ]] && [[ ! -x "/opt/homebrew/bin/ssh-keygen" && ! -x "/usr/local/bin/ssh-keygen" ]]; then
+                echo "❌ Error: Apple's system OpenSSH (/usr/bin/ssh-keygen) does not support FIDO2 keys." >&2
+                echo "   Please install OpenSSH via Homebrew: brew install openssh" >&2
+                exit 1
+            fi
             if FIDO_PROVIDER=$(find_fido_provider); then
-                echo "ℹ️  Found FIDO security provider: $FIDO_PROVIDER"
+                echo "ℹ️  Found custom FIDO security provider: $FIDO_PROVIDER"
                 echo "👉 Touch your hardware security key when it blinks..."
                 ssh-keygen -w "$FIDO_PROVIDER" -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -N ""
             else
-                if [[ "$(uname -s)" == "Darwin" ]]; then
-                    echo "❌ Error: libfido2 is required on macOS for hardware keys. Install it with: brew install libfido2" >&2
-                    exit 1
-                fi
                 echo "👉 Touch your hardware security key when it blinks..."
                 ssh-keygen -t ecdsa-sk -f "$KEY_FILE" -C "$SSH_USER@$SSH_HOST$KEY_SUFFIX" -N ""
             fi
