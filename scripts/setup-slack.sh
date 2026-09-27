@@ -102,18 +102,6 @@ get_active_token() {
             echo "$cred_val"
             return 0
         fi
-        echo ""
-        return 0
-    fi
-
-    # 4. Password Store fallback (pass)
-    if command -v pass &>/dev/null; then
-        local pass_val
-        pass_val="$(PASSWORD_STORE_GPG_OPTS="--batch --no-tty" pass show ai-agents/slack/bot_token 2>/dev/null | head -n 1 || true)"
-        if [[ -n "$pass_val" ]]; then
-            echo "$pass_val"
-            return 0
-        fi
     fi
 
     echo ""
