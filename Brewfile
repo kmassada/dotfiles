@@ -11,6 +11,8 @@ brew "csvlens"
 brew "python@3.14"
 # CSV to Markdown table converter
 brew "csvtomd"
+# Modern diagram scripting language that turns text to diagrams
+brew "d2"
 # Select default apps for documents and URL schemes on macOS
 brew "duti"
 # Modern, maintained replacement for ls
@@ -29,6 +31,8 @@ brew "git-delta"
 brew "glow"
 # CLI for Drive, Gmail, Calendar, Sheets, Docs, Chat, Admin, and more
 brew "googleworkspace-cli"
+# Graph visualization software from AT&T and Bell Labs
+brew "graphviz"
 # GNU Privacy Guard (OpenPGP)
 brew "gnupg"
 # Command-line pager for JSON data
@@ -77,6 +81,8 @@ brew "watch"
 brew "wget"
 # Process YAML, JSON, XML, CSV and properties documents from the CLI
 brew "yq"
+# Interactive viewer for graphs written in Graphviz's dot language
+brew "xdot"
 # UNIX shell (command interpreter)
 brew "zsh"
 # Real-time type-ahead completion for Zsh
@@ -142,7 +148,9 @@ vscode "ms-toolsai.vscode-jupyter-cell-tags"
 vscode "ms-toolsai.vscode-jupyter-slideshow"
 vscode "ms-vscode-remote.remote-containers"
 vscode "redhat.vscode-yaml"
+vscode "terrastruct.d2"
 vscode "tim-koehler.helm-intellisense"
+vscode "tintinweb.graphviz-interactive-preview"
 # Visual design platform
 mas "Canva", id: 897446215
 # EXIF metadata viewer
