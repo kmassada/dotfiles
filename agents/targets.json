@@ -39,6 +39,14 @@
             "command": "~/.gemini/antigravity-cli/statusline.sh",
             "enabled": true
           }
+        },
+        {
+          "target_file": "~/.gemini/antigravity-cli/settings.json",
+          "key": "commandDenylist",
+          "value": [
+            "pass show*",
+            "pass *"
+          ]
         }
       ]
     },
@@ -50,7 +58,19 @@
       "skills_dir": "~/.claude/skills",
       "mcp": {
         "target_file": "~/.claude.json"
-      }
+      },
+      "settings": [
+        {
+          "target_file": "~/.claude/settings.json",
+          "key": "permissions",
+          "value": {
+            "deny": [
+              "Bash(pass show *)",
+              "Bash(pass *)"
+            ]
+          }
+        }
+      ]
     }
   }
 }

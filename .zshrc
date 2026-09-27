@@ -406,6 +406,9 @@ source $HOME/.zsh_aliases
 
 export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
 
+# Local user binaries and security wrappers take precedence
+export PATH="$HOME/.local/bin:$PATH"
+
 # Iterm integration
 #test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
 
