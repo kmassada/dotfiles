@@ -1,4 +1,10 @@
 tap "mistertea/et"
+# Simple, modern and secure encryption tool
+brew "age"
+# Apple Silicon Secure Enclave plugin for age
+brew "age-plugin-se"
+# YubiKey PIV plugin for age
+brew "age-plugin-yubikey"
 # Record and share terminal sessions
 brew "asciinema"
 # Clone of cat(1) with syntax highlighting and Git integration
@@ -45,13 +51,15 @@ brew "k9s"
 brew "kubectx"
 # Simple terminal UI for git commands
 brew "lazygit"
+# FIDO2 library and tools for hardware security keys
+brew "libfido2"
 # Linux virtual machines
 brew "lima"
 # CLI for Node.js style checker and lint tool for Markdown files
 brew "markdownlint-cli"
 # Ambitious Vim-fork focused on extensibility and agility
 brew "neovim"
-# Standard UNIX password manager using GPG
+# Standard UNIX password manager using GPG (legacy fallback)
 brew "pass"
 # Pinentry dialog for GPG on macOS (Keychain integration)
 brew "pinentry-mac"

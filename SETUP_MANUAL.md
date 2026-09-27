@@ -87,3 +87,54 @@ Test it by opening a new terminal window and running `sudo true`.
 In **System Settings → Privacy & Security**:
 - **Full Disk Access:** Grant to **Terminal** (or **iTerm2**) if you need CLI tools to inspect system logs, backups, or launchctl daemons without permission prompts.
 - **Accessibility:** Grant to window managers (e.g., Rectangle, Raycast, AeroSpace) if installed.
+
+---
+
+## 6. 🔑 Passage & Hardware Security Key Onboarding
+
+> **Why Manual?** Private cryptographic keys and hardware tokens (Touch ID
+> Secure Enclave, Google Titan / FIDO2 security keys) are intentionally
+> isolated per machine and physical hardware device.
+
+After `bootstrap_mac.sh` installs `age`, `libfido2`, `age-plugin-se`,
+`age-plugin-fido2-hmac`, and `passage`:
+
+1. **Clone or Restore Passage Store:**
+
+   ```bash
+   git clone <your-private-passage-repo-url> ~/.passage/store
+   ```
+
+2. **Option A: Unlock via Physical FIDO2 / Titan Security Key:**
+   Plug in your hardware security key and restore your FIDO2 identity handle
+   to `~/.passage/identities` (or copy from secure backup):
+
+   ```bash
+   chmod 700 ~/.passage
+   chmod 600 ~/.passage/identities
+   ```
+
+   Verify decryption works by running:
+
+   ```bash
+   passage ls
+   ```
+
+3. **Option B: Add Local Mac Touch ID (Secure Enclave):**
+   To decrypt locally using Touch ID without requiring your USB key plugged in:
+
+   ```bash
+   # 1. Generate local Secure Enclave key handle
+   age-plugin-se keygen -o ~/.passage/identities-se
+   chmod 600 ~/.passage/identities-se
+
+   # 2. Append identity handle to ~/.passage/identities
+   cat ~/.passage/identities-se >> ~/.passage/identities
+
+   # 3. Add the public recipient key to store recipients
+   grep 'public key:' ~/.passage/identities-se | awk '{print $NF}' >> ~/.passage/store/.age-recipients
+
+   # 4. Re-encrypt the store to all recipients and commit
+   passage git add .age-recipients
+   passage git commit -m "chore: add $(hostname -s) Touch ID recipient"
+   ```

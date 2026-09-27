@@ -61,9 +61,12 @@ sudo apt-get update
 
 # Install packages available in apt
 sudo apt-get install -y \
+    age \
     asciinema \
     bat \
     eza \
+    fido2-tools \
+    libfido2-dev \
     gnupg \
     pass \
     pinentry-curses \
@@ -235,6 +238,57 @@ else
     else
         echo "lazygit is up to date ($LOCAL_LAZYGIT_TAG)."
     fi
+fi
+
+# age-plugin-fido2-hmac (FIDO2 hmac-secret plugin for age)
+echo "Checking age-plugin-fido2-hmac..."
+if [ ! -f "$HOME/bin/age-plugin-fido2-hmac" ] && [ ! -f "$HOME/.local/bin/age-plugin-fido2-hmac" ]; then
+    echo "Installing age-plugin-fido2-hmac..."
+    FIDO_JSON=$(curl -s https://api.github.com/repos/olastor/age-plugin-fido2-hmac/releases/latest 2>/dev/null)
+    FIDO_TAG=$(echo "$FIDO_JSON" | jq -r .tag_name 2>/dev/null)
+    FIDO_TAG="${FIDO_TAG:-v0.5.0}"
+    FIDO_URL="https://github.com/olastor/age-plugin-fido2-hmac/releases/download/${FIDO_TAG}/age-plugin-fido2-hmac-${FIDO_TAG}-linux-amd64.tar.gz"
+    if wget "$FIDO_URL" -O fido-plugin.tar.gz 2>/dev/null || curl -sSL "$FIDO_URL" -o fido-plugin.tar.gz; then
+        mkdir -p "$HOME/.local/bin" "$HOME/bin"
+        tar -xzf fido-plugin.tar.gz
+        if [ -f "age-plugin-fido2-hmac/age-plugin-fido2-hmac" ]; then
+            install -m 755 age-plugin-fido2-hmac/age-plugin-fido2-hmac "$HOME/.local/bin/age-plugin-fido2-hmac"
+            install -m 755 age-plugin-fido2-hmac/age-plugin-fido2-hmac "$HOME/bin/age-plugin-fido2-hmac"
+        fi
+        echo "age-plugin-fido2-hmac installed successfully."
+    else
+        echo "Failed to download age-plugin-fido2-hmac."
+    fi
+else
+    echo "age-plugin-fido2-hmac is already installed."
+fi
+
+# passage (age-based password manager backend)
+echo "Checking passage..."
+if [ ! -f "$HOME/.local/libexec/passage" ]; then
+    echo "Installing passage..."
+    PASSAGE_TMP=$(mktemp -d)
+    if git clone --depth 1 https://github.com/FiloSottile/passage.git "$PASSAGE_TMP/passage" 2>/dev/null; then
+        mkdir -p "$HOME/.local/libexec" "$HOME/.local/bin" "$HOME/bin"
+        make -C "$PASSAGE_TMP/passage" PREFIX="$HOME/.local" install 2>/dev/null || true
+        if [ -f "$HOME/.local/bin/passage" ] && [ ! -L "$HOME/.local/bin/passage" ]; then
+            mv -f "$HOME/.local/bin/passage" "$HOME/.local/libexec/passage"
+        fi
+        rm -rf "$PASSAGE_TMP"
+        if [ -f "$HOME/src/dotfiles/scripts/pass-wrapper.sh" ]; then
+            chmod +x "$HOME/src/dotfiles/scripts/pass-wrapper.sh"
+            ln -sf "$HOME/src/dotfiles/scripts/pass-wrapper.sh" "$HOME/.local/bin/passage"
+            ln -sf "$HOME/src/dotfiles/scripts/pass-wrapper.sh" "$HOME/bin/passage"
+            ln -sf "$HOME/src/dotfiles/scripts/pass-wrapper.sh" "$HOME/.local/bin/pass"
+            ln -sf "$HOME/src/dotfiles/scripts/pass-wrapper.sh" "$HOME/bin/pass"
+        fi
+        echo "passage installed successfully."
+    else
+        rm -rf "$PASSAGE_TMP"
+        echo "Failed to clone passage repository."
+    fi
+else
+    echo "passage is already installed."
 fi
 
 # lima (Linux VMs on macOS - Not applicable for Linux hosts)

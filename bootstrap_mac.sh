@@ -237,6 +237,61 @@ if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
         fi
     fi
 
+    # Install age-plugin-fido2-hmac (FIDO2 hmac-secret plugin for age) if not present
+    if [ ! -x "$HOME/.local/bin/age-plugin-fido2-hmac" ]; then
+        log_info "Installing age-plugin-fido2-hmac (FIDO2 hmac-secret plugin for age)..."
+        mkdir -p "$HOME/.local/bin"
+        TMP_FIDO=$(mktemp -d)
+        FIDO_ARCH="arm64"
+        if [[ "$(uname -m)" == "x86_64" ]]; then FIDO_ARCH="amd64"; fi
+        FIDO_VER=$(curl -fsSL https://api.github.com/repos/olastor/age-plugin-fido2-hmac/releases/latest 2>/dev/null | grep '"tag_name":' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+        FIDO_VER="${FIDO_VER:-v0.5.0}"
+        FIDO_URL="https://github.com/olastor/age-plugin-fido2-hmac/releases/download/${FIDO_VER}/age-plugin-fido2-hmac-${FIDO_VER}-darwin-${FIDO_ARCH}.tar.gz"
+        if curl -fsSL "$FIDO_URL" -o "$TMP_FIDO/plugin.tar.gz" 2>/dev/null; then
+            tar -xzf "$TMP_FIDO/plugin.tar.gz" -C "$TMP_FIDO" 2>/dev/null
+            if [[ -f "$TMP_FIDO/age-plugin-fido2-hmac/age-plugin-fido2-hmac" ]]; then
+                install -m 755 "$TMP_FIDO/age-plugin-fido2-hmac/age-plugin-fido2-hmac" "$HOME/.local/bin/age-plugin-fido2-hmac"
+            elif [[ -f "$TMP_FIDO/age-plugin-fido2-hmac" ]]; then
+                install -m 755 "$TMP_FIDO/age-plugin-fido2-hmac" "$HOME/.local/bin/age-plugin-fido2-hmac"
+            fi
+            rm -rf "$TMP_FIDO"
+            if [ -x "$HOME/.local/bin/age-plugin-fido2-hmac" ]; then
+                log_success "age-plugin-fido2-hmac (${FIDO_VER}) installed to ~/.local/bin/age-plugin-fido2-hmac."
+            fi
+        else
+            rm -rf "$TMP_FIDO"
+            log_warn "Failed to download age-plugin-fido2-hmac from $FIDO_URL."
+        fi
+    fi
+
+    # Install passage (age-based password manager backend) if not present
+    if [ ! -x "$HOME/.local/libexec/passage" ]; then
+        log_info "Installing passage (age-based password manager backend)..."
+        TMP_PASSAGE=$(mktemp -d)
+        if git clone --depth 1 https://github.com/FiloSottile/passage.git "$TMP_PASSAGE/passage" 2>/dev/null; then
+            mkdir -p "$HOME/.local/libexec" "$HOME/.local/share/man/man1" "$HOME/.local/bin"
+            make -C "$TMP_PASSAGE/passage" PREFIX="$HOME/.local" WITH_ALLCOMP=yes install 2>/dev/null || true
+            if [[ -f "$HOME/.local/bin/passage" && ! -L "$HOME/.local/bin/passage" ]]; then
+                mv -f "$HOME/.local/bin/passage" "$HOME/.local/libexec/passage"
+            fi
+            rm -rf "$TMP_PASSAGE"
+            if [ -x "$HOME/.local/libexec/passage" ]; then
+                log_success "passage installed to ~/.local/libexec/passage."
+            fi
+        else
+            rm -rf "$TMP_PASSAGE"
+            log_warn "Failed to clone passage repository."
+        fi
+    fi
+
+    # Ensure security interceptor symlinks for pass and passage are active
+    mkdir -p "$HOME/.local/bin"
+    if [[ -f "$DOTFILES_DIR/scripts/pass-wrapper.sh" ]]; then
+        chmod +x "$DOTFILES_DIR/scripts/pass-wrapper.sh"
+        ln -sf "$DOTFILES_DIR/scripts/pass-wrapper.sh" "$HOME/.local/bin/pass"
+        ln -sf "$DOTFILES_DIR/scripts/pass-wrapper.sh" "$HOME/.local/bin/passage"
+    fi
+
     # Fix zsh compinit permissions on Homebrew share directory
     BREW_SHARE="$(brew --prefix)/share"
     if [[ -d "$BREW_SHARE" ]]; then
