@@ -9,33 +9,63 @@
 # ==============================================================================
 set -euo pipefail
 
-# Find real underlying pass binary, excluding this wrapper script
-find_real_pass() {
-    if [[ -n "${PASS_REAL_PATH:-}" && -x "$PASS_REAL_PATH" ]]; then
-        echo "$PASS_REAL_PATH"
-        return 0
+# Determine invoked binary name (pass vs passage)
+INVOKED_CMD=$(basename "$0")
+if [[ "$INVOKED_CMD" == *"passage"* ]]; then
+    TOOL_NAME="passage"
+else
+    TOOL_NAME="pass"
+fi
+
+# Find real underlying binary, excluding this wrapper script
+find_real_binary() {
+    if [[ "$TOOL_NAME" == "passage" ]]; then
+        if [[ -n "${PASSAGE_REAL_PATH:-}" && -x "$PASSAGE_REAL_PATH" ]]; then
+            echo "$PASSAGE_REAL_PATH"
+            return 0
+        fi
+        local candidates=(
+            "${HOME}/.local/libexec/passage"
+            "/opt/homebrew/bin/passage"
+            "/usr/local/bin/passage"
+        )
+        for c in "${candidates[@]}"; do
+            if [[ -x "$c" && "$c" != "$0" ]]; then
+                echo "$c"
+                return 0
+            fi
+        done
+        local found
+        while IFS= read -r found; do
+            if [[ -x "$found" && "$found" != "$0" ]]; then
+                echo "$found"
+                return 0
+            fi
+        done < <(type -ap passage 2>/dev/null || true)
+    else
+        if [[ -n "${PASS_REAL_PATH:-}" && -x "$PASS_REAL_PATH" ]]; then
+            echo "$PASS_REAL_PATH"
+            return 0
+        fi
+        local candidates=(
+            "/opt/homebrew/bin/pass"
+            "/usr/local/bin/pass"
+            "/usr/bin/pass"
+        )
+        for c in "${candidates[@]}"; do
+            if [[ -x "$c" && "$c" != "$0" ]]; then
+                echo "$c"
+                return 0
+            fi
+        done
+        local found
+        while IFS= read -r found; do
+            if [[ -x "$found" && "$found" != "$0" ]]; then
+                echo "$found"
+                return 0
+            fi
+        done < <(type -ap pass 2>/dev/null || true)
     fi
-
-    # Check PATH excluding self
-    local found
-    while IFS= read -r found; do
-        if [[ -x "$found" && "$found" != "$0" ]]; then
-            echo "$found"
-            return 0
-        fi
-    done < <(type -ap pass 2>/dev/null || true)
-
-    local candidates=(
-        "/opt/homebrew/bin/pass"
-        "/usr/local/bin/pass"
-        "/usr/bin/pass"
-    )
-    for c in "${candidates[@]}"; do
-        if [[ -x "$c" && "$c" != "$0" ]]; then
-            echo "$c"
-            return 0
-        fi
-    done
 
     return 1
 }
@@ -81,10 +111,10 @@ is_agent_caller() {
     return 1
 }
 
-# Determine if the given pass subcommand or arguments constitute secret inspection
+# Determine if the given pass/passage subcommand or arguments constitute secret inspection
 is_inspection_command() {
     if [[ $# -eq 0 ]]; then
-        # Default pass with no arguments executes 'pass ls'
+        # Default with no arguments executes 'ls'
         return 1
     fi
 
@@ -103,18 +133,18 @@ is_inspection_command() {
 
 main() {
     if is_agent_caller && is_inspection_command "$@"; then
-        echo "[ERROR] Access Denied: AI agent is prohibited from inspecting plaintext secrets via 'pass'." >&2
+        echo "[ERROR] Access Denied: AI agent is prohibited from inspecting plaintext secrets via '$TOOL_NAME'." >&2
         echo "[INFO] Zero-Inspection Rule: Use 'cred run -- <command>' to execute tools with in-memory credential injection." >&2
         exit 1
     fi
 
-    local real_pass
-    real_pass=$(find_real_pass) || {
-        echo "[ERROR] pass wrapper: underlying 'pass' executable not found." >&2
+    local real_binary
+    real_binary=$(find_real_binary) || {
+        echo "[ERROR] $TOOL_NAME wrapper: underlying '$TOOL_NAME' executable not found." >&2
         exit 127
     }
 
-    exec "$real_pass" "$@"
+    exec "$real_binary" "$@"
 }
 
 main "$@"

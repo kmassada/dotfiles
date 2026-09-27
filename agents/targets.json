@@ -45,7 +45,9 @@
           "key": "commandDenylist",
           "value": [
             "pass show*",
-            "pass *"
+            "pass *",
+            "passage show*",
+            "passage *"
           ]
         }
       ]
@@ -66,7 +68,9 @@
           "value": {
             "deny": [
               "Bash(pass show *)",
-              "Bash(pass *)"
+              "Bash(pass *)",
+              "Bash(passage show *)",
+              "Bash(passage *)"
             ]
           }
         }

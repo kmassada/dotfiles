@@ -177,13 +177,14 @@ if [ "$APPLY" = true ]; then
         log_success "Configured local credential CLI (cred / creds) in ~/.local/bin"
     fi
 
-    # Ensure pass security interceptor wrapper is linked into ~/.local/bin
+    # Ensure pass/passage security interceptor wrapper is linked into ~/.local/bin
     pass_wrapper="$SCRIPT_DIR/../scripts/pass-wrapper.sh"
     if [ -f "$pass_wrapper" ]; then
         mkdir -p "$HOME/.local/bin"
         chmod +x "$pass_wrapper"
         ln -sf "$pass_wrapper" "$HOME/.local/bin/pass"
-        log_success "Configured pass security interceptor wrapper in ~/.local/bin/pass"
+        ln -sf "$pass_wrapper" "$HOME/.local/bin/passage"
+        log_success "Configured pass/passage security interceptor in ~/.local/bin"
     fi
 
     # Install rules

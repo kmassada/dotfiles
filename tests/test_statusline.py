@@ -7,13 +7,11 @@
 
 from __future__ import annotations
 
+import importlib.util
 import io
-import sys
 import unittest
 from pathlib import Path
 from unittest import mock
-
-import importlib.util
 
 _script_path = Path(__file__).parent.parent / "scripts" / "agy-statusline.py"
 _spec = importlib.util.spec_from_file_location("agy_statusline", _script_path)
@@ -76,9 +74,7 @@ class TestAgyStatusline(unittest.TestCase):
 
     def test_resolve_workspace_vcs_fallback(self) -> None:
         """Verify non-git VCS resolution (e.g. client/branch) when not in Git."""
-        vcs_payload = {
-            "vcs": {"type": "hg", "client": "makz_setup", "dirty": True}
-        }
+        vcs_payload = {"vcs": {"type": "hg", "client": "makz_setup", "dirty": True}}
         ws = statusline.resolve_workspace("/nonexistent/path", data=vcs_payload)
         self.assertIn(" setup*", statusline.strip_ansi(ws))
 

@@ -176,6 +176,56 @@ class TestPassWrapper(unittest.TestCase):
         self.assertEqual(res.returncode, 0)
         self.assertIn("REAL_PASS_CALLED: show some/secret", res.stdout)
 
+    def test_passage_symlink_blocks_agent_show(self) -> None:
+        """Verify that wrapper blocks show when invoked as 'passage'."""
+        passage_symlink = Path(self.tmp_dir) / "passage"
+        passage_symlink.symlink_to(SCRIPT_PATH)
+        mock_passage = Path(self.tmp_dir) / "mock_passage"
+        mock_passage.write_text('#!/bin/sh\necho "REAL_PASSAGE_CALLED: $@"\n')
+        mock_passage.chmod(0o755)
+
+        env = {
+            **self.env,
+            "ANTIGRAVITY_AGENT": "1",
+            "PASSAGE_REAL_PATH": str(mock_passage),
+        }
+        res = subprocess.run(
+            [str(passage_symlink), "show", "some/secret"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=5,
+        )
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("[ERROR] Access Denied", res.stderr)
+        self.assertIn("via 'passage'", res.stderr)
+        self.assertNotIn("REAL_PASSAGE_CALLED", res.stdout)
+
+    def test_passage_symlink_allows_safe_ls(self) -> None:
+        """Verify that wrapper permits ls when invoked as 'passage'."""
+        passage_symlink = Path(self.tmp_dir) / "passage"
+        passage_symlink.symlink_to(SCRIPT_PATH)
+        mock_passage = Path(self.tmp_dir) / "mock_passage"
+        mock_passage.write_text('#!/bin/sh\necho "REAL_PASSAGE_CALLED: $@"\n')
+        mock_passage.chmod(0o755)
+
+        env = {
+            **self.env,
+            "ANTIGRAVITY_AGENT": "1",
+            "PASSAGE_REAL_PATH": str(mock_passage),
+        }
+        res = subprocess.run(
+            [str(passage_symlink), "ls"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+            timeout=5,
+        )
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("REAL_PASSAGE_CALLED: ls", res.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

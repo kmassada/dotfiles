@@ -128,9 +128,7 @@ def resolve_state_and_agent(data: dict[str, Any]) -> tuple[str, str | None]:
     if running_subagents:
         first_sub = running_subagents[0]
         extra = (
-            f" (+{len(running_subagents) - 1})"
-            if len(running_subagents) > 1
-            else ""
+            f" (+{len(running_subagents) - 1})" if len(running_subagents) > 1 else ""
         )
         subagent_badge = f"{MAGENTA}󱐋 {first_sub}{extra}{RESET}"
 
@@ -238,7 +236,9 @@ def resolve_workspace(
     if vcs.get("client"):
         client_name = str(vcs["client"])
         # Clean common user prefix e.g. makz_setup -> setup if underscore present
-        clean_client = client_name.split("_", 1)[-1] if "_" in client_name else client_name
+        clean_client = (
+            client_name.split("_", 1)[-1] if "_" in client_name else client_name
+        )
         return f" {clean_client}{dirty_mark}"
     if vcs.get("branch"):
         return f" {vcs['branch']}{dirty_mark}"
@@ -315,11 +315,7 @@ def format_context(ctx: dict[str, Any]) -> tuple[str | None, float]:
     if not isinstance(ctx, dict) or not ctx:
         return None, 0.0
 
-    percent = (
-        ctx.get("used_percentage")
-        or ctx.get("percent")
-        or ctx.get("percentage")
-    )
+    percent = ctx.get("used_percentage") or ctx.get("percent") or ctx.get("percentage")
 
     max_tokens = (
         ctx.get("context_window_size")
@@ -427,9 +423,7 @@ def generate_statusline(data: dict[str, Any]) -> str:
     # 6. Tasks & Artifacts Badges
     task_count = 0
     tasks_raw = (
-        data.get("task_count")
-        or data.get("tasks")
-        or data.get("background_tasks")
+        data.get("task_count") or data.get("tasks") or data.get("background_tasks")
     )
     if isinstance(tasks_raw, list):
         running_tasks = [
