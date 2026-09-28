@@ -177,12 +177,14 @@ class TestSSHInitKey(unittest.TestCase):
             (self.ssh_dir / "testuser@hardware-box.local-hardware.pub").is_file()
         )
 
-        # Verify config has SecurityKeyProvider
+        # Verify config has SecurityKeyProvider and IdentityAgent none
         config_file = self.ssh_dir / "config"
         self.assertTrue(config_file.is_file())
         config_content = config_file.read_text()
         self.assertIn("Host hardware-box.local", config_content)
         self.assertIn(f"SecurityKeyProvider {dummy_fido}", config_content)
+        self.assertIn("IdentityAgent none", config_content)
+        self.assertNotIn("AddKeysToAgent yes", config_content)
 
     def test_consecutive_runs_preserve_both_ed25519_and_hardware_keys(self) -> None:
         """Verify that running default ed25519 and -m hardware does not overwrite files."""

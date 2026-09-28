@@ -191,7 +191,11 @@ if ! is_host_in_config "$CONFIG_ENTRY_HOST" "$KEY_PATH_BASE/config"; then
         echo "    User $SSH_USER"
         echo "    IdentityFile $KEY_FILE"
         echo "    Port $SSH_PORT"
-        echo "    AddKeysToAgent yes"
+        if [ -n "$KEY_SUFFIX" ]; then
+            echo "    IdentityAgent none"
+        else
+            echo "    AddKeysToAgent yes"
+        fi
         if [[ -n "${FIDO_PROVIDER:-}" ]]; then
             echo "    SecurityKeyProvider $FIDO_PROVIDER"
         elif [[ -z "$KEY_SUFFIX" && "$(uname -s)" == "Darwin" ]]; then
@@ -204,11 +208,13 @@ else
     echo "ℹ️  Host $CONFIG_ENTRY_HOST already exists in config. Skipping update."
 fi
 
-# Register with macOS Keychain / SSH Agent
-if [[ "$(uname -s)" == "Darwin" ]] && command -v ssh-add >/dev/null 2>&1; then
-    ssh-add --apple-use-keychain "$KEY_FILE" 2>/dev/null || ssh-add "$KEY_FILE" 2>/dev/null || true
-elif command -v ssh-add >/dev/null 2>&1; then
-    ssh-add "$KEY_FILE" 2>/dev/null || true
+# Register with macOS Keychain / SSH Agent (only for standard keys, not hardware keys)
+if [ -z "$KEY_SUFFIX" ]; then
+    if [[ "$(uname -s)" == "Darwin" ]] && command -v ssh-add >/dev/null 2>&1; then
+        ssh-add --apple-use-keychain "$KEY_FILE" 2>/dev/null || ssh-add "$KEY_FILE" 2>/dev/null || true
+    elif command -v ssh-add >/dev/null 2>&1; then
+        ssh-add "$KEY_FILE" 2>/dev/null || true
+    fi
 fi
 
 # --- 4. Export Actions ---
