@@ -10,3 +10,6 @@ __pycache__/
 *.pyc
 .DS_Store
 
+# Local machine-specific configs (private overrides)
+.config/kitty/*.local.conf
+.config/kitty/open_link.py
